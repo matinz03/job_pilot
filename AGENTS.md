@@ -7,3 +7,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Agent tooling
+
+- Use `.agents/skills/caveman/SKILL.md` for every task. Keep Caveman `full` mode active unless user explicitly requests another mode or normal prose.
+- Use RTK for every supported shell command, following `RTK.md`. Use direct commands only when RTK cannot execute that operation.
+- Caveman skills are installed under `.agents/skills` and locked in `skills-lock.json`.
+
+@RTK.md
