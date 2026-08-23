@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:**
-**Last completed:**
-**Next:**
+**Phase:** Phase 1 — Foundation
+**Last completed:** 01 Homepage
+**Next:** 02 Auth
 
 ---
 
@@ -16,7 +16,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 1 — Foundation
 
-- [ ] 01 Homepage
+- [x] 01 Homepage
 - [ ] 02 Auth
 - [ ] 03 PostHog Initialization
 - [ ] 04 Database Schema
@@ -50,7 +50,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Decisions Made During Build
 
-_Add decisions here as they are made during implementation._
+- Homepage CTAs link to `/login` until authentication is implemented in Feature 02.
+- Homepage uses supplied public preview assets rather than recreating dashboard, jobs, or agent-log illustrations.
 
 ---
 
