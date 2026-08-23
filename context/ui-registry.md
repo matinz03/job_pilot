@@ -74,3 +74,60 @@ Last updated: 2026-08-23
 | Accent usage | `border-l-accent`, `border-l-success` |
 
 **Pattern notes:** Editorial two-column sections use white copy panel plus muted preview panel. Each list row has a top border; one row may carry a 2px semantic accent rail.
+
+### Login Form
+
+File: `components/auth/LoginForm.tsx`
+Last updated: 2026-08-24
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-surface` |
+| Border | `border border-border` |
+| Border radius | `rounded-xl` |
+| Text — primary | `text-text-primary`, `text-accent` |
+| Text — secondary | `text-text-secondary`, `text-error` |
+| Spacing | `p-6 sm:p-8`, `space-y-2`, `mt-8 space-y-3` |
+| Hover state | `hover:bg-surface-secondary`; primary provider action uses `hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover` |
+| Shadow | `shadow-card`; primary provider action uses `shadow-button` |
+| Accent usage | `text-accent` eyebrow label |
+
+**Pattern notes:** Authentication surface uses established white card treatment. Google remains secondary; GitHub uses the existing dark primary CTA treatment. Disabled provider buttons use opacity and no pointer cursor.
+
+### OAuth Callback
+
+File: `components/auth/OAuthCallback.tsx`
+Last updated: 2026-08-24
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-surface` |
+| Border | `border border-border` |
+| Border radius | `rounded-xl` |
+| Text — primary | `text-text-primary` |
+| Text — secondary | `text-text-secondary` |
+| Spacing | `p-6 sm:p-8`, `mt-2` |
+| Hover state | none |
+| Shadow | `shadow-card` |
+| Accent usage | none |
+
+**Pattern notes:** Callback status mirrors the login card rather than introducing a separate progress pattern.
+
+### Dashboard Placeholder
+
+File: `app/dashboard/page.tsx`
+Last updated: 2026-08-24
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-background`, `bg-surface` |
+| Border | `border border-border` |
+| Border radius | `rounded-xl` |
+| Text — primary | `text-text-primary`, `text-accent` |
+| Text — secondary | `text-text-secondary` |
+| Spacing | `p-6 sm:p-8`, `mt-2` |
+| Hover state | none |
+| Shadow | `shadow-card` |
+| Accent usage | `text-accent` eyebrow label |
+
+**Pattern notes:** Minimal authenticated landing card preserves the login surface pattern until Feature 14 supplies dashboard content.

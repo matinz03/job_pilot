@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 1 — Foundation
-**Last completed:** 01 Homepage
-**Next:** 02 Auth
+**Last completed:** 02 Auth
+**Next:** 03 PostHog Initialization
 
 ---
 
@@ -17,7 +17,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 1 — Foundation
 
 - [x] 01 Homepage
-- [ ] 02 Auth
+- [x] 02 Auth
 - [ ] 03 PostHog Initialization
 - [ ] 04 Database Schema
 
@@ -52,6 +52,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - Homepage CTAs link to `/login` until authentication is implemented in Feature 02.
 - Homepage uses supplied public preview assets rather than recreating dashboard, jobs, or agent-log illustrations.
+- Auth uses `@insforge/sdk` and its SSR helpers. Next.js 16 `proxy.ts` protects authenticated routes; `middleware.ts` is deprecated.
+- A minimal authenticated dashboard destination exists until Feature 14 replaces it with the complete dashboard UI.
 
 ---
 
