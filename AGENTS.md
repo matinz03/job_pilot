@@ -24,6 +24,7 @@ Read in this exact order before any implementation:
 
 - Never use hardcoded hex values or raw Tailwind color classes
 - Update `progress-tracker.md` and `ui-registry.md` after every feature
+- For every shared UI pattern change, find all instances before editing, update every instance, then report the complete instance list with command evidence.
 - Before any third party library — load its installed skill first,
   then read `context/library-docs.md` for project-specific rules
 - If the same problem persists after one corrective prompt —
