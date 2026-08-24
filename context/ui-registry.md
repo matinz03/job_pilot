@@ -215,9 +215,9 @@ Last updated: 2026-08-25
 | Shadow | `shadow-card` cards, `shadow-button` primary action |
 | Accent usage | `bg-accent` primary action, `bg-accent-muted border-accent text-accent` current page |
 
-**Pattern notes:** Three stacked cards inside the standard 1440px frame at 32px gutters — search controls, filter bar, then one card holding the table and its pagination footer. Card and form treatments match the profile page; inputs here use `rounded-lg` and a 12px vertical rhythm because the design shows a larger search field than the profile form's `rounded-md` controls.
+**Pattern notes:** Three stacked cards inside the standard 1440px frame at 32px gutters — search controls, filter bar, then one card holding the table and its pagination footer. `SearchControls` is the page's only client component; the table reads real jobs from the database on the server. Card and form treatments match the profile page; inputs here use `rounded-lg` and a 12px vertical rhythm because the design shows a larger search field than the profile form's `rounded-md` controls.
 
-The search card pairs two labelled inputs with the accent primary action on the same baseline, the first input carrying an inset leading search icon. Its result banner is `bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line.
+The search card pairs two labelled inputs with the accent primary action on the same baseline, the first input carrying an inset leading search icon. During a search both inputs and the button disable, and the button label becomes `Finding jobs...` — the same in-button progress pattern the profile card uses for extraction and generation. Its result banner is `bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line. Search failures use the matching error surface, `bg-error/5` with `text-error` and `role="alert"`, at the same size and position, so success and failure occupy the same slot.
 
 The filter bar is one borderless full-width input with an inset search icon, separated from two secondary dropdown buttons by `sm:border-l sm:border-border`. The dropdowns are the standard secondary button treatment plus a trailing chevron. Both are inert until Feature 11.
 
@@ -227,4 +227,4 @@ The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the
 
 Pagination sits inside the table card above a `border-t border-border`: a results count with `font-semibold text-text-primary` numerals on the left, and page controls on the right. All page controls share `min-w-10 rounded-lg border px-3.5 py-2 text-sm font-medium`; the current page is `border-accent bg-accent-muted text-accent`, the gap is a borderless `...`, and Previous/Next disable to `text-text-muted` with no hover.
 
-Empty state: the table renders a centered `text-sm text-text-muted` line at `px-6 py-16` when there are no jobs.
+Empty state: the table renders a centered `text-sm text-text-muted` line at `px-6 py-16` when there are no jobs, and the pagination footer is not rendered at all — an empty table shows no "Showing 0 to 0" row.

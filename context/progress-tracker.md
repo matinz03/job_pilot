@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 3 — Find Jobs Page
-**Last completed:** 09 Find Jobs Page — Full UI
-**Next:** 10 Adzuna Job Discovery
+**Last completed:** 10 Adzuna Job Discovery (blocked on Adzuna credentials — see below)
+**Next:** 11 Filter + Sort + Pagination
 
 ---
 
@@ -31,7 +31,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ### Phase 3 — Find Jobs Page
 
 - [x] 09 Find Jobs Page — Full UI
-- [ ] 10 Adzuna Job Discovery
+- [x] 10 Adzuna Job Discovery
 - [ ] 11 Filter + Sort + Pagination
 
 ### Phase 4 — Job Details Page
@@ -125,3 +125,25 @@ Decisions settled in an `/architect` session and carried into the implementation
 - Row density and column proportions were measured against the design and matched: 65px rows, a 32px company icon tile, and column widths of 22/29/17/18/14 percent.
 - Verified in a browser at 1440px through a temporary unauthenticated copy of the page, since `/find-jobs` is behind auth. Computed styles confirmed against `ui-tokens.md`: 16px card radius on `#FFFFFF` with `#E7EAF3` borders, 12px/500/`#6A7282` uppercase headers, a 6px `#E7EAF3` track, and fills of `#10B981`, `#61A8FF`, `#FF8904`. The temporary page was removed. The Browser pane could not composite, so no screenshot comparison was possible — the check was computed styles and geometry, not pixels. `typecheck`, `lint`, and `build` are clean.
 - All controls are inert by design. Search, filter, sort, and pagination are wired in Features 10 and 11.
+
+### Feature 10 — Adzuna Job Discovery
+
+**Two blockers that are not code and need the user:**
+
+- **The Adzuna credentials in `.env.local` are rejected.** A bare request with no `category` or `where` still returns `401 AUTH_FAIL`, so this is the key pair itself, not the request shape. `ADZUNA_APP_ID` is 9 alphanumeric characters and `ADZUNA_APP_KEY` is 32, both clean of quotes and whitespace. Adzuna app ids are usually 8. Check or regenerate at developer.adzuna.com. Everything downstream of the search is proven and will work the moment a valid key lands.
+- **PostHog has never fired an event.** `lib/posthog-client.ts` and `lib/posthog-server.ts` both read `NEXT_PUBLIC_POSTHOG_KEY`, matching `build-plan.md` Feature 03, but `.env.local` defines `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`, so both factories return `null`. Settled: rename the variable in `.env.local`; the code is correct. Until then `job_search_started`, `job_found` and `profile_completed` all no-op, and Feature 17's charts will have no history behind them.
+
+**Decisions:**
+
+- **One model call per job, run in parallel.** A malformed response costs one job rather than the run, which is what `code-standards.md` asks for. The failed job is logged to `agent_logs` at `warning` and skipped, because `jobs.match_score` is `NOT NULL` and there is no honest value to store. Roughly $0.01 per ten-job search.
+- **Duplicates are skipped in code, not by a constraint.** Results already saved for this user under the same company and title are dropped before scoring, so re-running a search costs nothing and does not fill the table with copies. No migration; the run message reports how many were already there.
+- **The jobs table now reads from the database.** `app/find-jobs/page.tsx` queries the user's jobs ordered by `found_at`, and the mock array is gone. Feature 11 adds filter, sort and real pagination on top — until then the footer reports a single page.
+- **A "strong match" is `match_score >= 70`**, the same threshold Feature 11 calls High Match. Note this is deliberately not the bar-colour banding, which is 90/80 — see the Feature 09 entry.
+- Searching requires a profile with a current title or at least one skill, since scoring against nothing is meaningless. The route returns a 422 naming what to add.
+- `agent_runs` is written before the search and closed as `completed` or `failed` in a `finally`-style catch, so a crashed run never sits at `running`.
+- Model output is untrusted, as in Features 07 and 08: `match_score` is clamped to 0–100 and rounded before it reaches the database check constraint, the reason is capped at 600 characters, and both skill lists dedupe case-insensitively and cap at 12.
+- Country is detected from the trailing comma-separated segment of the location first, then anywhere in the string, then falls back to `us`.
+
+**Files:** `lib/adzuna.ts` (API client, country detection, salary formatting), `agent/matcher.ts` (AI scoring), `agent/adzuna.ts` (orchestration), `agent/types.ts`, `app/api/agent/find/route.ts`, `lib/utils.ts` (`formatRelativeTime`). `components/find-jobs/SearchControls.tsx` became a client component.
+
+**Verified:** 32 assertions through a temporary route in the dev server — country detection across aliases, codes and fallbacks, salary formatting, relative time, and the Zod hardening of match output including score clamping at both ends, reason capping, case-insensitive skill dedupe and non-array rejection. One live scoring call against a synthetic posting returned a grounded 95 with correct matched and missing skills, correctly reading Rust, WebAssembly and Kubernetes as optional. The temporary route was removed. `typecheck`, `lint` and `build` are clean. **Not verified: the live Adzuna search and everything that depends on it — the database writes, the run lifecycle, the PostHog captures and the browser flow.** That is gated on the credentials.
