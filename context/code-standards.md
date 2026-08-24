@@ -247,8 +247,9 @@ All environment variables defined in `.env.local` for development. Never hardcod
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | lib/insforge-client.ts |
 | `BROWSERBASE_API_KEY`           | lib/browserbase.ts     |
 | `BROWSERBASE_PROJECT_ID`        | lib/browserbase.ts     |
-| `OPENCODE_API_KEY`              | lib/ai.ts              |
-| `AI_MODEL`                      | lib/ai.ts              |
+| `LLM_API_KEY`                   | lib/ai.ts              |
+| `LLM_API_URL`                   | lib/ai.ts              |
+| `LLM_MODEL`                     | lib/ai.ts              |
 | `ADZUNA_APP_ID`                 | lib/adzuna.ts          |
 | `ADZUNA_APP_KEY`                | lib/adzuna.ts          |
 | `NEXT_PUBLIC_POSTHOG_KEY`       | lib/posthog-client.ts  |
@@ -264,13 +265,14 @@ The model is defined once and read from a single place. Never hardcode a model n
 
 ```typescript
 // lib/ai.ts
-export const AI_MODEL = process.env.AI_MODEL ?? "gpt-5.6-luna";
-export function createAiClient(): OpenAI; // openai SDK pointed at https://opencode.ai/zen/v1
+export const AI_MODEL = process.env.LLM_MODEL ?? "gpt-5.6-luna";
+export function createAiClient(): OpenAI; // openai SDK pointed at LLM_API_URL
 ```
 
 - All AI calls go through `createAiClient()` and `AI_MODEL` from `lib/ai.ts`
-- The gateway is OpenCode Zen, which is OpenAI-compatible — the `openai` SDK works with only a `baseURL` change
-- `AI_MODEL` in `.env.local` overrides the default, so a cheaper or free Zen model can be swapped in without a code change
+- The gateway is OpenAI-compatible — the `openai` SDK works with only a `baseURL` change
+- Both the gateway and the model are environment values. Changing provider is an `.env.local` edit,
+  never a code change: set `LLM_API_URL`, `LLM_API_KEY`, and `LLM_MODEL`
 - Never write a literal model name in `agent/`, `lib/`, or `app/api/`
 
 ---
@@ -326,7 +328,7 @@ Approved dependencies for this project:
 - `@insforge/ssr` — InsForge client
 - `@browserbasehq/sdk` — Browserbase sessions
 - `@browserbasehq/stagehand` — AI browser control
-- `openai` — AI model calls, pointed at the OpenCode Zen base URL
+- `openai` — AI model calls, pointed at the gateway named by `LLM_API_URL`
 - `posthog-js` — PostHog browser client
 - `posthog-node` — PostHog server client
 - `@react-pdf/renderer` — Resume PDF generation

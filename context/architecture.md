@@ -9,7 +9,7 @@
 | Cloud browser                  | Browserbase              | Company research — browsing company public pages |
 | AI browser control             | Stagehand                | Company page interaction and content extraction  |
 | Job Discovery                  | Adzuna API               | Job search and discovery                         |
-| AI model                       | OpenCode Zen gateway     | Matching, research synthesis, extraction         |
+| AI model                       | LLM API gateway          | Matching, research synthesis, extraction         |
 | Analytics                      | PostHog                  | Event tracking and dashboard charts              |
 | PDF generation                 | @react-pdf/renderer      | Resume PDF rendering                             |
 | Styling                        | Tailwind CSS + shadcn/ui | UI components and styling                        |
@@ -95,7 +95,7 @@
 │       ├── CompanyResearch.tsx
 │       └── JobActions.tsx
 ├── lib/
-│   ├── ai.ts                              → OpenCode Zen client + AI_MODEL constant
+│   ├── ai.ts                              → AI gateway client + AI_MODEL constant
 │   ├── resume-extraction.ts               → Resume text → validated profile values + merge rules
 │   ├── profile-validation.ts              → Shared Zod rules for profile fields and resume files
 │   ├── insforge-client.ts                 → InsForge browser client instance
@@ -387,8 +387,8 @@ const stagehand = new Stagehand({
   browserbaseSessionID: session.id,
   modelName: AI_MODEL,
   modelClientOptions: {
-    apiKey: process.env.OPENCODE_API_KEY!,
-    baseURL: "https://opencode.ai/zen/v1",
+    apiKey: process.env.LLM_API_KEY!,
+    baseURL: process.env.LLM_API_URL!,
   },
 });
 

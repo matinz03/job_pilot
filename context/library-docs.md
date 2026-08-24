@@ -298,7 +298,7 @@ const stagehand = new Stagehand({
   apiKey: process.env.BROWSERBASE_API_KEY!,
   projectId: process.env.BROWSERBASE_PROJECT_ID!,
   browserbaseSessionID: session.id,
-  model: { modelName: AI_MODEL, apiKey: process.env.OPENCODE_API_KEY!, baseURL: "https://opencode.ai/zen/v1" },
+  model: { modelName: AI_MODEL, apiKey: process.env.LLM_API_KEY!, baseURL: process.env.LLM_API_URL! },
   disablePino: true,
 });
 
@@ -490,13 +490,14 @@ const response = await createAiClient().chat.completions.create({
 - If browser research returns empty — still run synthesis with job + profile only
 - yourEdge, gapsToAddress, and smartQuestions are the most valuable fields — never skip them
 
-## AI Model — OpenCode Zen
+## AI Model — LLM API gateway
 
 **Check first:** Check AGENTS.md for an installed skill covering the model gateway.
 
-The project has no OpenAI account. All AI calls go through the OpenCode Zen gateway, which is
-OpenAI-compatible, so the `openai` SDK works with only a `baseURL` change. The client and the model
-name live in `lib/ai.ts` and nowhere else.
+The project has no OpenAI account. All AI calls go through an OpenAI-compatible gateway, currently
+[llmapi.ai](https://api.llmapi.ai/v1), so the `openai` SDK works with only a `baseURL` change. The
+client and the model name live in `lib/ai.ts` and nowhere else, and both the gateway URL and the
+model come from the environment — switching provider is a config edit, not a code change.
 
 ### Client
 
@@ -504,14 +505,14 @@ name live in `lib/ai.ts` and nowhere else.
 // lib/ai.ts
 import OpenAI from "openai";
 
-const ZEN_BASE_URL = "https://opencode.ai/zen/v1";
+const DEFAULT_BASE_URL = "https://api.llmapi.ai/v1";
 
-export const AI_MODEL = process.env.AI_MODEL ?? "gpt-5.6-luna";
+export const AI_MODEL = process.env.LLM_MODEL ?? "gpt-5.6-luna";
 
 export function createAiClient(): OpenAI {
-  const apiKey = process.env.OPENCODE_API_KEY;
-  if (!apiKey) throw new Error("OPENCODE_API_KEY is not configured");
-  return new OpenAI({ apiKey, baseURL: ZEN_BASE_URL });
+  const apiKey = process.env.LLM_API_KEY;
+  if (!apiKey) throw new Error("LLM_API_KEY is not configured");
+  return new OpenAI({ apiKey, baseURL: process.env.LLM_API_URL ?? DEFAULT_BASE_URL });
 }
 ```
 
@@ -539,12 +540,13 @@ const result = JSON.parse(response.choices[0].message.content!);
 - `0.3` — matching, scoring, extraction, research synthesis — deterministic results
 - `0.7` — resume generation — natural variation
 
-Zen reasoning models may reject a fixed `temperature`. Catch the 400, retry once without it, and
-never let that failure reach the user. `lib/resume-extraction.ts` has the working pattern.
+`gpt-5.6-luna` on llmapi.ai accepts both `temperature` and `max_completion_tokens`, verified with a
+live call. Some reasoning models on other gateways reject a fixed `temperature`; catch the 400, retry
+once without it, and never let that failure reach the user. `lib/resume-extraction.ts` has the pattern.
 
 **Token limits:**
 
-Use `max_completion_tokens`, not `max_tokens` — Zen's GPT models follow the current OpenAI contract.
+Use `max_completion_tokens`, not `max_tokens` — the gateway follows the current OpenAI contract.
 Reasoning models spend tokens before emitting any JSON, so budget well above the size of the answer:
 
 - Job matching + scoring: `2000`
@@ -555,8 +557,8 @@ Reasoning models spend tokens before emitting any JSON, so budget well above the
 **Rules:**
 
 - Model always comes from `AI_MODEL` — never write a literal model name in a feature
-- `AI_MODEL` in `.env.local` swaps the model without a code change; Zen also offers free beta models,
-  useful when the paid balance runs out, but they are unreliable and not a shipping target
+- `LLM_MODEL` and `LLM_API_URL` in `.env.local` swap the model or the whole provider without a code
+  change. Confirm a new gateway serves the model id and accepts `response_format` before switching
 - Always use `response_format: { type: "json_object" }` for structured data
 - Always parse `response.choices[0].message.content` as a string — even with `json_object`
 - Always validate parsed JSON with Zod before using it, and tolerate nulls, numbers, and bad
@@ -566,15 +568,18 @@ Reasoning models spend tokens before emitting any JSON, so budget well above the
   browser research failed
 - A model or gateway failure returns a human-readable message; the raw error only goes to the log
 
-**Cost reference** (per 1M tokens, checked 2026-08-24):
+**Cost reference** (per 1M tokens, llmapi.ai, checked 2026-08-24):
 
 | Model | Input | Output | Notes |
 | --- | --- | --- | --- |
-| `gpt-5.6-luna` | $0.20 | $1.20 | Project default. ~$0.0016 per resume extraction |
-| `gpt-5.4-nano` | $0.20 | $1.25 | Comparable fallback |
+| `gpt-5.6-luna` | $0.20 | $1.20 | Project default. About $0.001 per resume extraction |
+| `deepseek-v4-flash-0731` | $0.14 | $0.28 | Cheapest chat model; weaker at structured extraction |
 | `gemini-3.5-flash-lite` | $0.30 | $2.50 | Stronger on long documents |
-| `claude-haiku-4-5` | $1.00 | $5.00 | |
-| `big-pickle` | free | free | Beta, no availability guarantee |
+| `gemini-3.7-flash` | $0.75 | $3.75 | |
+| `grok-4.6` | $2.00 | $6.00 | |
+
+The gateway serves 16 chat models. Query `GET {LLM_API_URL}/models` for the current list and
+pricing rather than trusting this table; it also reports each model's `kind` and modalities.
 
 ---
 

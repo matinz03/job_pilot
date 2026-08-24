@@ -1,15 +1,16 @@
 import OpenAI from "openai";
 
-// OpenCode Zen is OpenAI-compatible, so the official SDK talks to it with only a baseURL change.
-const ZEN_BASE_URL = "https://opencode.ai/zen/v1";
+// The gateway is OpenAI-compatible, so switching providers is a base URL and model change,
+// never a code change. Both come from the environment.
+const DEFAULT_BASE_URL = "https://api.llmapi.ai/v1";
 
-export const AI_MODEL = process.env.AI_MODEL ?? "gpt-5.6-luna";
+export const AI_MODEL = process.env.LLM_MODEL ?? "gpt-5.6-luna";
 
 export function createAiClient(): OpenAI {
-  const apiKey = process.env.OPENCODE_API_KEY;
+  const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENCODE_API_KEY is not configured");
+    throw new Error("LLM_API_KEY is not configured");
   }
 
-  return new OpenAI({ apiKey, baseURL: ZEN_BASE_URL });
+  return new OpenAI({ apiKey, baseURL: process.env.LLM_API_URL ?? DEFAULT_BASE_URL });
 }
