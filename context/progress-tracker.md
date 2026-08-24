@@ -7,8 +7,8 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 2 — Profile Page
-**Last completed:** 07 AI Profile Extraction from Resume
-**Next:** 08 Resume PDF Generation from Profile
+**Last completed:** 08 Resume PDF Generation from Profile
+**Next:** 09 Find Jobs Page — Full UI (Phase 3)
 
 ---
 
@@ -26,7 +26,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - [x] 05 Profile Page — Full UI
 - [x] 06 Profile Save Logic
 - [x] 07 AI Profile Extraction from Resume
-- [ ] 08 Resume PDF Generation from Profile
+- [x] 08 Resume PDF Generation from Profile
 
 ### Phase 3 — Find Jobs Page
 
@@ -92,3 +92,24 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Notes
 
 _Add notes here as the build progresses — workarounds, patterns, anything that differs from the context files._
+
+### Feature 08 — Resume PDF Generation from Profile
+
+Decisions settled in an `/architect` session and carried into the implementation.
+
+- `@react-pdf/renderer` 4.8.1 is installed and listed in `serverExternalPackages` in `next.config.ts` beside `pdf-parse` — it ships font and layout binaries the server bundler must not trace.
+- The generated PDF overwrites the single path `{user_id}/resume.pdf`. That keeps the four path-scoped storage RLS policies from Feature 04 untouched — a separate `generated-resume.pdf` path would need a migration, new profile columns, and two-resume UI, which is larger than this feature. Because overwriting destroys a resume the user uploaded, the client confirms the replacement first when `resume_pdf_key` is set.
+- The button saves before it generates. It runs the existing `saveProfile` action, waits for success, then POSTs to `/api/resume/generate`; field errors abort generation. Reading the DB directly would silently ignore unsaved extraction results, which Feature 07 deliberately leaves unpersisted.
+- Minimum bar to generate: a full name, plus either one complete work-experience role or a non-empty skills list. Below that the route returns a message naming what to fill in. Requiring `is_complete` would block users missing only resume-irrelevant fields such as Remote Preference.
+- The model writes prose only — `{ summary, roles: [{ company, title, bullets }] }` and nothing else. Name, contact, dates, education, and skills are read from the `profiles` row and written into the PDF verbatim, so a fabricated company name or shifted date is structurally impossible in a document the user sends to employers.
+- One page is enforced by caps in the Zod schema (bullets per role, characters per bullet, summary length) plus a skills cap in the renderer. `@react-pdf/renderer` cannot report overflow, so a render-measure-retry loop would be guesswork.
+- No new PostHog event. `code-standards.md` fixes the project at four event names and resume generation is not one of them.
+- The route stayed `app/api/resume/generate/route.ts` as `architecture.md` specifies. JSX lives in a colocated `ResumeDocument.tsx` that exports `renderResumePdf(content)`, so the route never holds JSX and never needs `createElement`. Gateway handling follows Feature 07: `response_format: json_object`, `max_completion_tokens: 4000`, `temperature: 0.4`, and one retry without `temperature` on a 400 that rejects it.
+- The saved file is named `{full-name}-resume.pdf` in `resume_pdf_name`, so the existing `Saved resume: {filename}` label distinguishes a generated resume from an uploaded one. `Extract from Resume` then points at the generated PDF, which is harmless — extraction fills empty fields only and is idempotent.
+- No design exists for the PDF; `context/designs` has nothing for it. Layout is a conventional single column: header, summary, experience, education, skills. A PDF cannot read the CSS variables in `ui-tokens.md`, so `ResumeDocument.tsx` holds a small `palette` object mirroring four token values by name. That is the one place in the project where a hex literal is correct.
+- Sequencing save-then-generate is done by wrapping the server action rather than by reacting to `actionState` in an effect. `useActionState` is given a client function that awaits `saveProfile`, then — only when the submitted `FormData` carries `intent: "generate"` — awaits the generation fetch. The click handler sets that marker on a `FormData` it builds itself, so a native form submit is still an ordinary save. This keeps `isPending` true across both steps and avoids the `react-hooks/set-state-in-effect` problem Feature 07 hit.
+- The confirmation is an inline two-button row inside the resume card, not a browser `confirm()`. It reuses the existing secondary and accent primary treatments, so no new UI pattern is introduced.
+- The generated-resume status message clears wherever a save begins, for the same reason the extraction review panel does: its "from your saved profile" claim goes stale the moment the profile changes.
+- Storage `upload(path, file)` takes a `File | Blob` and uses PUT semantics that replace the object in place, so the buffer is wrapped in a `Blob` and no `upsert` flag exists or is needed.
+- An `app/api/_name` folder is a private folder in the App Router and is not routed. A temporary verification route had to be named without the underscore prefix to be reachable.
+- Verified: 30 assertions through a temporary route inside the running dev server, covering the readiness bar, messy and malformed model output against the Zod caps, fact-verbatim merging, bullet fallback to `responsibilities`, and file-name slugging. Real `renderToBuffer` output is a valid single-page PDF, and the worst case the caps allow — 3 roles x 4 max-length bullets, max summary, 18 skills — still renders one page. A live call to llmapi.ai (`gpt-5.6-luna`) produced a grounded summary, present tense on the current role and past tense on the prior one, invented nothing, and rendered in one page at 2,889 bytes. The temporary route was removed; the project has no test harness. `npm run typecheck`, `npm run lint`, and `npm run build` are clean.

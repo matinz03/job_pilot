@@ -172,3 +172,28 @@ The resume card's two actions sit in one centered wrapping row inside the dropzo
 Extraction results render in a review panel directly below the dropzone: `rounded-xl border border-accent/30 bg-surface-secondary p-5`, with an uppercase `text-accent` eyebrow, explanatory `text-text-dark` copy, and one accent chip per filled field (`rounded-sm bg-accent/10 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-accent`) — the same chip shape the error-token attention banner uses. When extraction fills nothing the panel shows a single line and no chips. Extraction failures reuse the inline `text-error` message pattern with `role="alert"`. The panel is a review gate, not a result: it states that nothing is saved yet, and it clears as soon as any save starts, so its claim is never stale.
 
 The dropzone itself is now an interactive surface, not decoration: it accepts dropped files, opens the file picker on click, and shows a drag-active state of `border-accent bg-accent/5` in place of the resting `border-border bg-surface-secondary` (or `border-error` when the resume field has an error), with `transition-colors` between them. It carries `cursor-pointer`. The surface ignores any click that lands on a control it wraps — its own two buttons and the `Open resume` link — by bailing when `event.target.closest("a, button")` matches. That single guard replaces per-child `stopPropagation`, so a control added inside the dropzone later cannot accidentally reopen the file picker. Keyboard users are served by those real buttons rather than by making the surface focusable, so no nested interactive roles are introduced.
+
+The `Generate Resume from Profile` action sits in a bottom row of the resume card, separated by `border-t border-border pt-6`, and uses the standard accent primary treatment with hover lift plus `disabled:cursor-not-allowed disabled:opacity-60`. While generating, the label becomes `Generating resume...` and the button disables, matching how `Extract from Resume` reports progress in its own label rather than in a separate status line.
+
+Because generating overwrites the single saved resume, a resume already on file turns the action into an inline confirmation rather than a browser dialog: the primary button is replaced by a centered wrapping row of `Keep current resume` (secondary treatment) and `Replace and generate` (accent primary), with a `text-sm font-medium text-text-dark` line below naming the file that will be replaced. No new pattern is introduced — both buttons reuse the existing resume-card treatments.
+
+Generation results reuse the resume card's existing message patterns: success is a `text-sm font-medium text-success-dark` line naming the generated filename with the same `Open resume` link, and failure is the inline `text-error` message with `role="alert"`. Both clear as soon as any save begins, so neither can describe a profile that has since changed.
+
+### Generated Resume PDF
+
+File: `app/api/resume/generate/ResumeDocument.tsx`
+Last updated: 2026-08-25
+
+| Property | Value |
+| --- | --- |
+| Background | page default (white) |
+| Border | none — sections separated by spacing only |
+| Border radius | none |
+| Text — primary | `#101828` (mirrors `--color-text-primary`) |
+| Text — secondary | `#6a7282` (mirrors `--color-text-secondary`), body copy `#364153` (mirrors `--color-text-dark`) |
+| Spacing | `padding: 40` page, `marginTop: 16` sections, `marginBottom: 10` roles |
+| Hover state | none — static document |
+| Shadow | none |
+| Accent usage | `#7c5cfc` (mirrors `--color-accent`) on section headings, the headline, and bullet marks |
+
+**Pattern notes:** A PDF renders outside the browser and cannot resolve the CSS variables in `ui-tokens.md`, so this file declares a four-value `palette` object mirroring those tokens by name. It is the only place in the project where hex literals are correct, and it must be updated whenever those four tokens change. Only the CSS properties listed in `library-docs.md` are used — anything else is silently ignored by `@react-pdf/renderer`. Layout is a single column: name, headline, contact line, links, then Summary, Experience, Education, and Skills, each with an uppercase accent heading. One page is guaranteed by content caps in `lib/resume-generation.ts` — 480-character summary, 4 bullets per role, 180 characters per bullet, 18 skills shown — because the renderer cannot report overflow.

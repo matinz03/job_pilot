@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // pdf-parse loads pdfjs-dist through dynamic requires that the server bundler cannot trace
-  serverExternalPackages: ["pdf-parse"],
+  // pdf-parse loads pdfjs-dist through dynamic requires that the server bundler cannot trace,
+  // and @react-pdf/renderer ships its own font and layout binaries that must stay unbundled
+  serverExternalPackages: ["pdf-parse", "@react-pdf/renderer"],
   experimental: {
     serverActions: {
       bodySizeLimit: "6mb",

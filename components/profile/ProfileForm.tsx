@@ -10,6 +10,9 @@ type ProfileFormProps = { initialProfile: ProfileFormValues };
 type FormField = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 type PendingSave = { field: FormField | null; isResumeUpload: boolean };
 type ExtractionOutcome = { filledFields: string[] } | { error: string } | null;
+type GenerationOutcome = { fileName: string } | { error: string } | null;
+
+const GENERATION_FAILURE_MESSAGE = "Could not generate your resume right now. Please try again.";
 
 const initialProfileActionState: ProfileActionState = {
   status: "idle",
@@ -69,10 +72,13 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
   const feedbackTimeoutRef = useRef<number | null>(null);
   const lastEditedFieldRef = useRef<FormField | null>(null);
   const pendingSavesRef = useRef<PendingSave[]>([]);
-  const [actionState, formAction, isPending] = useActionState(saveProfile, initialProfileActionState);
+  const [actionState, formAction, isPending] = useActionState(saveThenMaybeGenerate, initialProfileActionState);
   const [defaults, setDefaults] = useState(initialProfile);
   const [formKey, setFormKey] = useState(0);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [generation, setGeneration] = useState<GenerationOutcome>(null);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [extraction, setExtraction] = useState<ExtractionOutcome>(null);
   const [resumeName, setResumeName] = useState(initialProfile.resumePdfName ?? (initialProfile.resumePdfKey ? "resume.pdf" : ""));
@@ -117,6 +123,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
   function saveCurrentValues({ isResumeUpload = false }: { isResumeUpload?: boolean } = {}) {
     if (!formRef.current) return;
     setExtraction(null);
+    setGeneration(null);
     pendingSavesRef.current.push({ field: isResumeUpload ? null : lastEditedFieldRef.current, isResumeUpload });
     startTransition(() => formAction(new FormData(formRef.current!)));
   }
@@ -245,6 +252,75 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
     }
   }
 
+  async function runGeneration() {
+    try {
+      const response = await fetch("/api/resume/generate", { method: "POST" });
+      const result: unknown = await response.json();
+      const payload = result as { success?: boolean; data?: { fileName?: string }; error?: string };
+
+      if (!payload.success || !payload.data?.fileName) {
+        setGeneration({ error: payload.error ?? GENERATION_FAILURE_MESSAGE });
+        return;
+      }
+
+      // The generated PDF replaced whatever was at the resume path, so the resume status
+      // now describes the generated document.
+      setResumeName(payload.data.fileName);
+      setResumeUploadState("saved");
+      setGeneration({ fileName: payload.data.fileName });
+    } catch (error) {
+      console.error("[components/profile/ProfileForm] resume generation", error);
+      setGeneration({ error: GENERATION_FAILURE_MESSAGE });
+    }
+  }
+
+  // Generation reads the saved profile, so the save has to land first — otherwise an unsaved
+  // edit, or an extraction the user has not saved yet, is silently missing from the PDF.
+  async function saveThenMaybeGenerate(
+    previousState: ProfileActionState,
+    formData: FormData,
+  ): Promise<ProfileActionState> {
+    const result = await saveProfile(previousState, formData);
+    if (formData.get("intent") !== "generate") return result;
+
+    try {
+      if (result.status !== "success") {
+        setGeneration({ error: "Fix the highlighted fields before generating your resume." });
+        return result;
+      }
+      await runGeneration();
+      return result;
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  function startGeneration() {
+    if (!formRef.current) return;
+    if (autoSaveTimeoutRef.current !== null) window.clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = null;
+    lastEditedFieldRef.current = null;
+    setConfirmReplace(false);
+    setGeneration(null);
+    setExtraction(null);
+    setIsGenerating(true);
+    pendingSavesRef.current.push({ field: null, isResumeUpload: false });
+    const formData = new FormData(formRef.current);
+    formData.set("intent", "generate");
+    startTransition(() => formAction(formData));
+  }
+
+  function handleGenerateClick() {
+    // Generating overwrites the single resume path, so a resume already on file is only
+    // replaced once the user says so.
+    if (resumeUploadState === "saved") {
+      setGeneration(null);
+      setConfirmReplace(true);
+      return;
+    }
+    startGeneration();
+  }
+
   function addTag(kind: "skill" | "industry") {
     const input = kind === "skill" ? skillInput : industryInput;
     const nextTag = input.trim();
@@ -279,7 +355,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
   const missingFields = completion.missingFields;
 
   return (
-    <ProfileErrorsContext.Provider value={errors}><form action={formAction} className="mx-auto max-w-[880px] space-y-6" key={formKey} onInput={handleFormInput} onChange={handleFormInput} onSubmit={() => setExtraction(null)} ref={formRef}>
+    <ProfileErrorsContext.Provider value={errors}><form action={formAction} className="mx-auto max-w-[880px] space-y-6" key={formKey} onInput={handleFormInput} onChange={handleFormInput} onSubmit={() => { setExtraction(null); setGeneration(null); }} ref={formRef}>
       <input name="skills" type="hidden" value={JSON.stringify(skills)} />
       <input name="industries" type="hidden" value={JSON.stringify(industries)} />
       <input name="workExperience" type="hidden" value={JSON.stringify(experiences)} />
@@ -287,7 +363,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
 
       {missingFields.length > 0 && <section className="flex flex-col gap-6 rounded-2xl border border-error/25 bg-surface p-6 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-10"><div><div className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full border-2 border-error text-sm font-bold text-error">!</span><SectionTitle>Profile needs attention</SectionTitle></div><p className="mt-3 max-w-[520px] text-base leading-7 text-text-dark">Complete missing fields to improve tailored matches and generated resumes.</p><div className="mt-5 flex flex-wrap gap-2">{missingFields.map((field) => <span className="rounded-sm bg-error/10 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-error" key={field}>{field}</span>)}</div></div><CompletionRing percentage={completion.percentage} /></section>}
 
-      <section className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-10"><SectionTitle>Resume</SectionTitle><p className="mt-1 text-base text-text-secondary">Upload an existing resume to auto-fill the profile, or generate a new tailored one from your details below.</p><input accept="application/pdf,.pdf" aria-describedby={errors.resume ? fieldErrorId("resume") : undefined} aria-invalid={Boolean(errors.resume)} className="sr-only" name="resume" onChange={handleResumeSelection} ref={fileInputRef} type="file" /><div className={`mt-7 grid min-h-80 cursor-pointer place-items-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${isDropTarget ? "border-accent bg-accent/5" : errors.resume ? "border-error bg-surface-secondary" : "border-border bg-surface-secondary"}`} onClick={handleDropzoneClick} onDragEnter={handleResumeDragOver} onDragLeave={handleResumeDragLeave} onDragOver={handleResumeDragOver} onDrop={handleResumeDrop}><div><div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-border bg-surface shadow-card"><UploadIcon /></div><p className="mt-5 text-xl font-semibold text-text-primary">Click to upload or drag and drop</p><p className="mt-2 text-base text-text-secondary">PDF formatting only. Maximum file size 5MB.</p>{resumeUploadState === "uploading" && <p aria-live="polite" className="mt-3 text-sm font-medium text-text-secondary">Uploading resume...</p>}{errors.resume && <p aria-live="assertive" className="mt-3 text-sm font-medium text-error" id={fieldErrorId("resume")} role="alert">{errors.resume}</p>}{resumeUploadState === "saved" && <p aria-live="polite" className="mt-3 text-sm font-medium text-success-dark">Saved resume: <span className="break-all">{resumeName || "resume.pdf"}</span>. <a className="underline underline-offset-2 hover:text-success" href="/api/resume" rel="noopener noreferrer" target="_blank">Open resume</a></p>}<div className="mt-7 flex flex-wrap items-center justify-center gap-3"><button className="rounded-md border border-border bg-surface px-5 py-2.5 text-base font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending || isExtracting} onClick={() => fileInputRef.current?.click()} type="button">Select Resume</button>{resumeUploadState === "saved" && <button className="rounded-md bg-accent px-5 py-2.5 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover disabled:cursor-not-allowed disabled:opacity-60" disabled={isExtracting || isPending} onClick={() => { void extractFromResume(); }} type="button">{isExtracting ? "Reading resume..." : "Extract from Resume"}</button>}</div></div></div>{extraction && "filledFields" in extraction && <div aria-live="polite" className="mt-5 rounded-xl border border-accent/30 bg-surface-secondary p-5">{extraction.filledFields.length > 0 ? <><p className="text-xs font-semibold uppercase tracking-wide text-accent">Review before saving</p><p className="mt-2 text-base text-text-dark">Filled {extraction.filledFields.length} empty {extraction.filledFields.length === 1 ? "field" : "fields"} from your resume. Nothing is saved yet — check the values below, then save.</p><div className="mt-4 flex flex-wrap gap-2">{extraction.filledFields.map((field) => <span className="rounded-sm bg-accent/10 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-accent" key={field}>{field}</span>)}</div></> : <p className="text-base text-text-dark">Your profile already covers everything this resume contains. Nothing changed.</p>}</div>}{extraction && "error" in extraction && <p aria-live="assertive" className="mt-5 text-sm font-medium text-error" role="alert">{extraction.error}</p>}<div className="mt-7 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between"><p className="text-base text-text-secondary">Need a fresh document based on fields below?</p><button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover" type="button"><DocumentIcon /> Generate Resume from Profile</button></div></section>
+      <section className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-10"><SectionTitle>Resume</SectionTitle><p className="mt-1 text-base text-text-secondary">Upload an existing resume to auto-fill the profile, or generate a new tailored one from your details below.</p><input accept="application/pdf,.pdf" aria-describedby={errors.resume ? fieldErrorId("resume") : undefined} aria-invalid={Boolean(errors.resume)} className="sr-only" name="resume" onChange={handleResumeSelection} ref={fileInputRef} type="file" /><div className={`mt-7 grid min-h-80 cursor-pointer place-items-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${isDropTarget ? "border-accent bg-accent/5" : errors.resume ? "border-error bg-surface-secondary" : "border-border bg-surface-secondary"}`} onClick={handleDropzoneClick} onDragEnter={handleResumeDragOver} onDragLeave={handleResumeDragLeave} onDragOver={handleResumeDragOver} onDrop={handleResumeDrop}><div><div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-border bg-surface shadow-card"><UploadIcon /></div><p className="mt-5 text-xl font-semibold text-text-primary">Click to upload or drag and drop</p><p className="mt-2 text-base text-text-secondary">PDF formatting only. Maximum file size 5MB.</p>{resumeUploadState === "uploading" && <p aria-live="polite" className="mt-3 text-sm font-medium text-text-secondary">Uploading resume...</p>}{errors.resume && <p aria-live="assertive" className="mt-3 text-sm font-medium text-error" id={fieldErrorId("resume")} role="alert">{errors.resume}</p>}{resumeUploadState === "saved" && <p aria-live="polite" className="mt-3 text-sm font-medium text-success-dark">Saved resume: <span className="break-all">{resumeName || "resume.pdf"}</span>. <a className="underline underline-offset-2 hover:text-success" href="/api/resume" rel="noopener noreferrer" target="_blank">Open resume</a></p>}<div className="mt-7 flex flex-wrap items-center justify-center gap-3"><button className="rounded-md border border-border bg-surface px-5 py-2.5 text-base font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending || isExtracting} onClick={() => fileInputRef.current?.click()} type="button">Select Resume</button>{resumeUploadState === "saved" && <button className="rounded-md bg-accent px-5 py-2.5 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover disabled:cursor-not-allowed disabled:opacity-60" disabled={isExtracting || isPending} onClick={() => { void extractFromResume(); }} type="button">{isExtracting ? "Reading resume..." : "Extract from Resume"}</button>}</div></div></div>{extraction && "filledFields" in extraction && <div aria-live="polite" className="mt-5 rounded-xl border border-accent/30 bg-surface-secondary p-5">{extraction.filledFields.length > 0 ? <><p className="text-xs font-semibold uppercase tracking-wide text-accent">Review before saving</p><p className="mt-2 text-base text-text-dark">Filled {extraction.filledFields.length} empty {extraction.filledFields.length === 1 ? "field" : "fields"} from your resume. Nothing is saved yet — check the values below, then save.</p><div className="mt-4 flex flex-wrap gap-2">{extraction.filledFields.map((field) => <span className="rounded-sm bg-accent/10 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-accent" key={field}>{field}</span>)}</div></> : <p className="text-base text-text-dark">Your profile already covers everything this resume contains. Nothing changed.</p>}</div>}{extraction && "error" in extraction && <p aria-live="assertive" className="mt-5 text-sm font-medium text-error" role="alert">{extraction.error}</p>}<div className="mt-7 border-t border-border pt-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-base text-text-secondary">Need a fresh document based on fields below?</p>{confirmReplace ? <div className="flex flex-wrap items-center justify-center gap-3"><button className="rounded-md border border-border bg-surface px-5 py-2.5 text-base font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending || isExtracting} onClick={() => setConfirmReplace(false)} type="button">Keep current resume</button><button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending || isExtracting} onClick={startGeneration} type="button"><DocumentIcon /> Replace and generate</button></div> : <button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending || isExtracting || isGenerating} onClick={handleGenerateClick} type="button"><DocumentIcon /> {isGenerating ? "Generating resume..." : "Generate Resume from Profile"}</button>}</div>{confirmReplace && <p className="mt-4 text-sm font-medium text-text-dark">Generating replaces your saved resume <span className="break-all">{resumeName || "resume.pdf"}</span>. The replaced file cannot be recovered.</p>}{generation && "fileName" in generation && <p aria-live="polite" className="mt-4 text-sm font-medium text-success-dark">Generated <span className="break-all">{generation.fileName}</span> from your saved profile. <a className="underline underline-offset-2 hover:text-success" href="/api/resume" rel="noopener noreferrer" target="_blank">Open resume</a></p>}{generation && "error" in generation && <p aria-live="assertive" className="mt-4 text-sm font-medium text-error" role="alert">{generation.error}</p>}</div></section>
 
       <section className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-10"><SectionTitle>Profile Information</SectionTitle><p className="mt-1 text-base text-text-secondary">This context is used to accurately represent you in agent interactions.</p><p aria-live="polite" className="mt-2 text-sm text-text-muted">{isPending ? "Saving changes..." : actionState.status === "success" ? "All changes saved." : "Changes save automatically."}</p>
         <div className="mt-6 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Personal Info</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Full Name"><input className={fieldClassName} defaultValue={defaults.fullName} name="fullName" /></Field><Field label="Email"><input className={fieldClassName} defaultValue={defaults.email} disabled /></Field><Field label="Phone Number"><input className={fieldClassName} defaultValue={defaults.phone} name="phone" placeholder="+1 (555) 000-0000" /></Field><Field label="Location"><input className={fieldClassName} defaultValue={defaults.location} name="location" placeholder="City, Country" /></Field><Field label="LinkedIn URL"><input className={fieldClassName} defaultValue={defaults.linkedinUrl} name="linkedinUrl" /></Field><Field label="Portfolio / GitHub"><input className={fieldClassName} defaultValue={defaults.portfolioUrl} name="portfolioUrl" /></Field><Field label="Work Authorization"><select className={fieldClassName} defaultValue={defaults.workAuthorization} name="workAuthorization"><option value="">Select authorization</option><option value="citizen">Citizen</option><option value="permanent_resident">Permanent resident</option><option value="visa_required">Visa required</option></select></Field></div></div>
