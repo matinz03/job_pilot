@@ -1,13 +1,15 @@
 "use client";
 
-import { cloneElement, createContext, isValidElement, startTransition, useActionState, useContext, useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
+import { cloneElement, createContext, isValidElement, startTransition, useActionState, useContext, useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { saveProfile, type ProfileActionState } from "@/actions/profile";
 import type { ProfileFormValues, WorkExperience } from "@/lib/profile";
 import type { ProfileFieldErrors } from "@/lib/profile-validation";
+import { mergeExtractedIntoProfile, type ExtractedProfile } from "@/lib/resume-extraction";
 
 type ProfileFormProps = { initialProfile: ProfileFormValues };
 type FormField = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 type PendingSave = { field: FormField | null; isResumeUpload: boolean };
+type ExtractionOutcome = { filledFields: string[] } | { error: string } | null;
 
 const initialProfileActionState: ProfileActionState = {
   status: "idle",
@@ -68,6 +70,11 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
   const lastEditedFieldRef = useRef<FormField | null>(null);
   const pendingSavesRef = useRef<PendingSave[]>([]);
   const [actionState, formAction, isPending] = useActionState(saveProfile, initialProfileActionState);
+  const [defaults, setDefaults] = useState(initialProfile);
+  const [formKey, setFormKey] = useState(0);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+  const [extraction, setExtraction] = useState<ExtractionOutcome>(null);
   const [resumeName, setResumeName] = useState(initialProfile.resumePdfName ?? (initialProfile.resumePdfKey ? "resume.pdf" : ""));
   const [resumeUploadState, setResumeUploadState] = useState<"idle" | "uploading" | "saved" | "error">(initialProfile.resumePdfKey ? "saved" : "idle");
   const [skills, setSkills] = useState(initialProfile.skills);
@@ -109,6 +116,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
 
   function saveCurrentValues({ isResumeUpload = false }: { isResumeUpload?: boolean } = {}) {
     if (!formRef.current) return;
+    setExtraction(null);
     pendingSavesRef.current.push({ field: isResumeUpload ? null : lastEditedFieldRef.current, isResumeUpload });
     startTransition(() => formAction(new FormData(formRef.current!)));
   }
@@ -126,12 +134,107 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
     scheduleAutoSave();
   }
 
-  function handleResumeSelection(event: ChangeEvent<HTMLInputElement>) {
-    const resume = event.target.files?.[0];
+  function acceptResume(resume: File | undefined) {
     setResumeName(resume?.name ?? "");
     if (!resume) return;
     setResumeUploadState("uploading");
     saveCurrentValues({ isResumeUpload: true });
+  }
+
+  function handleResumeSelection(event: ChangeEvent<HTMLInputElement>) {
+    acceptResume(event.target.files?.[0]);
+  }
+
+  function handleResumeDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDropTarget(false);
+    if (isPending || isExtracting) return;
+
+    const resume = event.dataTransfer.files[0];
+    const input = fileInputRef.current;
+    if (!resume || !input) return;
+
+    // The dropped file has to land on the file input itself, otherwise the form's
+    // resume field stays empty and the save action has nothing to upload.
+    const transfer = new DataTransfer();
+    transfer.items.add(resume);
+    input.files = transfer.files;
+    acceptResume(resume);
+  }
+
+  function handleResumeDragOver(event: DragEvent<HTMLDivElement>) {
+    if (isPending || isExtracting) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setIsDropTarget(true);
+  }
+
+  function handleResumeDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    setIsDropTarget(false);
+  }
+
+  function currentFormValues(): ProfileFormValues {
+    const formData = new FormData(formRef.current!);
+    const value = (key: string) => String(formData.get(key) ?? "");
+    return {
+      ...defaults,
+      fullName: value("fullName"),
+      phone: value("phone"),
+      location: value("location"),
+      linkedinUrl: value("linkedinUrl"),
+      portfolioUrl: value("portfolioUrl"),
+      workAuthorization: value("workAuthorization"),
+      currentTitle: value("currentTitle"),
+      experienceLevel: value("experienceLevel"),
+      yearsExperience: value("yearsExperience"),
+      jobTitlesSeeking: value("jobTitlesSeeking"),
+      remotePreference: value("remotePreference"),
+      salaryExpectation: value("salaryExpectation"),
+      preferredLocations: value("preferredLocations"),
+      coverLetterTone: value("coverLetterTone"),
+      skills,
+      industries,
+      workExperience: experiences,
+      education,
+    };
+  }
+
+  async function extractFromResume() {
+    if (!formRef.current) return;
+    setIsExtracting(true);
+    setExtraction(null);
+
+    try {
+      const response = await fetch("/api/resume/extract", { method: "POST" });
+      const result: unknown = await response.json();
+      const payload = result as { success?: boolean; data?: ExtractedProfile; error?: string };
+
+      if (!payload.success || !payload.data) {
+        setExtraction({ error: payload.error ?? "Could not read your resume right now. Please try again." });
+        return;
+      }
+
+      // Extraction only fills the form. The pending autosave is cancelled so nothing reaches
+      // the database until the user reviews the values and saves.
+      if (autoSaveTimeoutRef.current !== null) window.clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+      lastEditedFieldRef.current = null;
+
+      const merged = mergeExtractedIntoProfile(currentFormValues(), payload.data, () => crypto.randomUUID());
+      setDefaults(merged.values);
+      setSkills(merged.values.skills);
+      setIndustries(merged.values.industries);
+      setExperiences(merged.values.workExperience);
+      setEducation(merged.values.education);
+      setFormKey((key) => key + 1);
+      setExtraction({ filledFields: merged.filledFields });
+    } catch (error) {
+      console.error("[components/profile/ProfileForm] resume extraction", error);
+      setExtraction({ error: "Could not read your resume right now. Please try again." });
+    } finally {
+      setIsExtracting(false);
+    }
   }
 
   function addTag(kind: "skill" | "industry") {
@@ -168,7 +271,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
   const missingFields = completion.missingFields;
 
   return (
-    <ProfileErrorsContext.Provider value={errors}><form action={formAction} className="mx-auto max-w-[880px] space-y-6" onInput={handleFormInput} onChange={handleFormInput} ref={formRef}>
+    <ProfileErrorsContext.Provider value={errors}><form action={formAction} className="mx-auto max-w-[880px] space-y-6" key={formKey} onInput={handleFormInput} onChange={handleFormInput} onSubmit={() => setExtraction(null)} ref={formRef}>
       <input name="skills" type="hidden" value={JSON.stringify(skills)} />
       <input name="industries" type="hidden" value={JSON.stringify(industries)} />
       <input name="workExperience" type="hidden" value={JSON.stringify(experiences)} />
@@ -176,18 +279,18 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
 
       {missingFields.length > 0 && <section className="flex flex-col gap-6 rounded-2xl border border-error/25 bg-surface p-6 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-10"><div><div className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full border-2 border-error text-sm font-bold text-error">!</span><SectionTitle>Profile needs attention</SectionTitle></div><p className="mt-3 max-w-[520px] text-base leading-7 text-text-dark">Complete missing fields to improve tailored matches and generated resumes.</p><div className="mt-5 flex flex-wrap gap-2">{missingFields.map((field) => <span className="rounded-sm bg-error/10 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-error" key={field}>{field}</span>)}</div></div><CompletionRing percentage={completion.percentage} /></section>}
 
-      <section className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-10"><SectionTitle>Resume</SectionTitle><p className="mt-1 text-base text-text-secondary">Upload an existing resume to auto-fill the profile, or generate a new tailored one from your details below.</p><input accept="application/pdf,.pdf" aria-describedby={errors.resume ? fieldErrorId("resume") : undefined} aria-invalid={Boolean(errors.resume)} className="sr-only" name="resume" onChange={handleResumeSelection} ref={fileInputRef} type="file" /><div className={`mt-7 grid min-h-80 place-items-center rounded-xl border-2 border-dashed bg-surface-secondary px-6 py-10 text-center ${errors.resume ? "border-error" : "border-border"}`}><div><div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-border bg-surface shadow-card"><UploadIcon /></div><p className="mt-5 text-xl font-semibold text-text-primary">Click to upload or drag and drop</p><p className="mt-2 text-base text-text-secondary">PDF formatting only. Maximum file size 5MB.</p>{resumeUploadState === "uploading" && <p aria-live="polite" className="mt-3 text-sm font-medium text-text-secondary">Uploading resume...</p>}{errors.resume && <p aria-live="assertive" className="mt-3 text-sm font-medium text-error" id={fieldErrorId("resume")} role="alert">{errors.resume}</p>}{resumeUploadState === "saved" && <p aria-live="polite" className="mt-3 text-sm font-medium text-success-dark">Saved resume: <span className="break-all">{resumeName || "resume.pdf"}</span>. <a className="underline underline-offset-2 hover:text-success" href="/api/resume" rel="noopener noreferrer" target="_blank">Open resume</a></p>}<button className="mt-7 rounded-md border border-border bg-surface px-5 py-2.5 text-base font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending} onClick={() => fileInputRef.current?.click()} type="button">Select Resume</button></div></div><div className="mt-7 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between"><p className="text-base text-text-secondary">Need a fresh document based on fields below?</p><button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover" type="button"><DocumentIcon /> Generate Resume from Profile</button></div></section>
+      <section className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-10"><SectionTitle>Resume</SectionTitle><p className="mt-1 text-base text-text-secondary">Upload an existing resume to auto-fill the profile, or generate a new tailored one from your details below.</p><input accept="application/pdf,.pdf" aria-describedby={errors.resume ? fieldErrorId("resume") : undefined} aria-invalid={Boolean(errors.resume)} className="sr-only" name="resume" onChange={handleResumeSelection} ref={fileInputRef} type="file" /><div className={`mt-7 grid min-h-80 cursor-pointer place-items-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${isDropTarget ? "border-accent bg-accent/5" : errors.resume ? "border-error bg-surface-secondary" : "border-border bg-surface-secondary"}`} onClick={() => { if (!isPending && !isExtracting) fileInputRef.current?.click(); }} onDragEnter={handleResumeDragOver} onDragLeave={handleResumeDragLeave} onDragOver={handleResumeDragOver} onDrop={handleResumeDrop}><div><div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-border bg-surface shadow-card"><UploadIcon /></div><p className="mt-5 text-xl font-semibold text-text-primary">Click to upload or drag and drop</p><p className="mt-2 text-base text-text-secondary">PDF formatting only. Maximum file size 5MB.</p>{resumeUploadState === "uploading" && <p aria-live="polite" className="mt-3 text-sm font-medium text-text-secondary">Uploading resume...</p>}{errors.resume && <p aria-live="assertive" className="mt-3 text-sm font-medium text-error" id={fieldErrorId("resume")} role="alert">{errors.resume}</p>}{resumeUploadState === "saved" && <p aria-live="polite" className="mt-3 text-sm font-medium text-success-dark">Saved resume: <span className="break-all">{resumeName || "resume.pdf"}</span>. <a className="underline underline-offset-2 hover:text-success" href="/api/resume" rel="noopener noreferrer" target="_blank">Open resume</a></p>}<div className="mt-7 flex flex-wrap items-center justify-center gap-3"><button className="rounded-md border border-border bg-surface px-5 py-2.5 text-base font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending || isExtracting} onClick={(event) => { event.stopPropagation(); fileInputRef.current?.click(); }} type="button">Select Resume</button>{resumeUploadState === "saved" && <button className="rounded-md bg-accent px-5 py-2.5 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover disabled:cursor-not-allowed disabled:opacity-60" disabled={isExtracting || isPending} onClick={(event) => { event.stopPropagation(); void extractFromResume(); }} type="button">{isExtracting ? "Reading resume..." : "Extract from Resume"}</button>}</div></div></div>{extraction && "filledFields" in extraction && <div aria-live="polite" className="mt-5 rounded-xl border border-accent/30 bg-surface-secondary p-5">{extraction.filledFields.length > 0 ? <><p className="text-xs font-semibold uppercase tracking-wide text-accent">Review before saving</p><p className="mt-2 text-base text-text-dark">Filled {extraction.filledFields.length} empty {extraction.filledFields.length === 1 ? "field" : "fields"} from your resume. Nothing is saved yet — check the values below, then save.</p><div className="mt-4 flex flex-wrap gap-2">{extraction.filledFields.map((field) => <span className="rounded-sm bg-accent/10 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-accent" key={field}>{field}</span>)}</div></> : <p className="text-base text-text-dark">Your profile already covers everything this resume contains. Nothing changed.</p>}</div>}{extraction && "error" in extraction && <p aria-live="assertive" className="mt-5 text-sm font-medium text-error" role="alert">{extraction.error}</p>}<div className="mt-7 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between"><p className="text-base text-text-secondary">Need a fresh document based on fields below?</p><button className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover" type="button"><DocumentIcon /> Generate Resume from Profile</button></div></section>
 
       <section className="rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-10"><SectionTitle>Profile Information</SectionTitle><p className="mt-1 text-base text-text-secondary">This context is used to accurately represent you in agent interactions.</p><p aria-live="polite" className="mt-2 text-sm text-text-muted">{isPending ? "Saving changes..." : actionState.status === "success" ? "All changes saved." : "Changes save automatically."}</p>
-        <div className="mt-6 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Personal Info</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Full Name"><input className={fieldClassName} defaultValue={initialProfile.fullName} name="fullName" /></Field><Field label="Email"><input className={fieldClassName} defaultValue={initialProfile.email} disabled /></Field><Field label="Phone Number"><input className={fieldClassName} defaultValue={initialProfile.phone} name="phone" placeholder="+1 (555) 000-0000" /></Field><Field label="Location"><input className={fieldClassName} defaultValue={initialProfile.location} name="location" placeholder="City, Country" /></Field><Field label="LinkedIn URL"><input className={fieldClassName} defaultValue={initialProfile.linkedinUrl} name="linkedinUrl" /></Field><Field label="Portfolio / GitHub"><input className={fieldClassName} defaultValue={initialProfile.portfolioUrl} name="portfolioUrl" /></Field><Field label="Work Authorization"><select className={fieldClassName} defaultValue={initialProfile.workAuthorization} name="workAuthorization"><option value="">Select authorization</option><option value="citizen">Citizen</option><option value="permanent_resident">Permanent resident</option><option value="visa_required">Visa required</option></select></Field></div></div>
+        <div className="mt-6 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Personal Info</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Full Name"><input className={fieldClassName} defaultValue={defaults.fullName} name="fullName" /></Field><Field label="Email"><input className={fieldClassName} defaultValue={defaults.email} disabled /></Field><Field label="Phone Number"><input className={fieldClassName} defaultValue={defaults.phone} name="phone" placeholder="+1 (555) 000-0000" /></Field><Field label="Location"><input className={fieldClassName} defaultValue={defaults.location} name="location" placeholder="City, Country" /></Field><Field label="LinkedIn URL"><input className={fieldClassName} defaultValue={defaults.linkedinUrl} name="linkedinUrl" /></Field><Field label="Portfolio / GitHub"><input className={fieldClassName} defaultValue={defaults.portfolioUrl} name="portfolioUrl" /></Field><Field label="Work Authorization"><select className={fieldClassName} defaultValue={defaults.workAuthorization} name="workAuthorization"><option value="">Select authorization</option><option value="citizen">Citizen</option><option value="permanent_resident">Permanent resident</option><option value="visa_required">Visa required</option></select></Field></div></div>
 
-        <div className="mt-10 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Professional Info</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Current/Recent Job Title"><input className={`${fieldClassName} md:col-span-2`} defaultValue={initialProfile.currentTitle} name="currentTitle" /></Field><Field label="Experience Level"><select className={fieldClassName} defaultValue={initialProfile.experienceLevel} name="experienceLevel"><option value="">Select experience level</option><option>Junior</option><option>Mid-level</option><option>Senior</option><option>Lead</option></select></Field><Field label="Years of Experience"><input className={fieldClassName} defaultValue={initialProfile.yearsExperience} min="1" name="yearsExperience" type="number" /></Field></div><div className="mt-5"><TagInput add={() => addTag("skill")} input={skillInput} label="Skills" onChange={setSkillInput} onKeyDown={(event) => handleTagKeyDown(event, "skill")} remove={(tag) => setSkills((current) => current.filter((item) => item !== tag))} tags={skills} /></div><div className="mt-5"><TagInput add={() => addTag("industry")} input={industryInput} label="Industries Worked In (Optional)" onChange={setIndustryInput} onKeyDown={(event) => handleTagKeyDown(event, "industry")} placeholder="E.g. FinTech, Healthcare" remove={(tag) => setIndustries((current) => current.filter((item) => item !== tag))} tags={industries} /></div></div>
+        <div className="mt-10 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Professional Info</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Current/Recent Job Title"><input className={`${fieldClassName} md:col-span-2`} defaultValue={defaults.currentTitle} name="currentTitle" /></Field><Field label="Experience Level"><select className={fieldClassName} defaultValue={defaults.experienceLevel} name="experienceLevel"><option value="">Select experience level</option><option>Junior</option><option>Mid-level</option><option>Senior</option><option>Lead</option></select></Field><Field label="Years of Experience"><input className={fieldClassName} defaultValue={defaults.yearsExperience} min="1" name="yearsExperience" type="number" /></Field></div><div className="mt-5"><TagInput add={() => addTag("skill")} input={skillInput} label="Skills" onChange={setSkillInput} onKeyDown={(event) => handleTagKeyDown(event, "skill")} remove={(tag) => setSkills((current) => current.filter((item) => item !== tag))} tags={skills} /></div><div className="mt-5"><TagInput add={() => addTag("industry")} input={industryInput} label="Industries Worked In (Optional)" onChange={setIndustryInput} onKeyDown={(event) => handleTagKeyDown(event, "industry")} placeholder="E.g. FinTech, Healthcare" remove={(tag) => setIndustries((current) => current.filter((item) => item !== tag))} tags={industries} /></div></div>
 
         <div className="mt-10 border-t border-border pt-8"><div className="flex items-center justify-between gap-4"><h3 className="text-lg font-semibold text-text-primary">Work Experience</h3><button className="text-sm font-semibold text-accent hover:text-accent-dark disabled:text-text-muted" disabled={experiences.length >= 3} onClick={addRole} type="button">+ Add role</button></div><div className="mt-6 space-y-5">{experiences.map((experience) => <ExperienceCard experience={experience} key={experience.id} remove={removeRole} update={updateExperience} />)}</div></div>
 
         <div className="mt-10 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Education</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Highest Degree"><select className={fieldClassName} onChange={(event) => setEducation((current) => ({ ...current, degree: event.target.value }))} value={education.degree}><option value="">Select degree</option><option>High School</option><option>Associate Degree</option><option>Bachelor&apos;s Degree</option><option>Master&apos;s Degree</option><option>Doctorate</option></select></Field><Field label="Field of Study"><input className={fieldClassName} onChange={(event) => setEducation((current) => ({ ...current, fieldOfStudy: event.target.value }))} value={education.fieldOfStudy} /></Field><Field label="Institution Name"><input className={fieldClassName} onChange={(event) => setEducation((current) => ({ ...current, institution: event.target.value }))} placeholder="E.g. State University" value={education.institution} /></Field><Field label="Graduation Year"><input className={fieldClassName} onChange={(event) => setEducation((current) => ({ ...current, graduationYear: event.target.value }))} placeholder="YYYY" value={education.graduationYear} /></Field></div></div>
 
-        <div className="mt-10 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Job Preferences</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Job Titles Seeking"><input className={`${fieldClassName} md:col-span-2`} defaultValue={initialProfile.jobTitlesSeeking} name="jobTitlesSeeking" placeholder="Frontend Engineer, React Developer" /></Field><Field label="Remote Preference"><select className={fieldClassName} defaultValue={initialProfile.remotePreference} name="remotePreference"><option value="">Select preference</option><option value="any">Any</option><option value="remote">Remote only</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select></Field><Field label="Salary Expectation (Optional)"><input className={fieldClassName} defaultValue={initialProfile.salaryExpectation} name="salaryExpectation" placeholder="E.g. $120k+" /></Field><Field label="Preferred Locations (Optional)"><input className={`${fieldClassName} md:col-span-2`} defaultValue={initialProfile.preferredLocations} name="preferredLocations" placeholder="E.g. New York, London" /></Field><Field label="Cover Letter Tone (Optional)"><select className={fieldClassName} defaultValue={initialProfile.coverLetterTone} name="coverLetterTone"><option value="">Select tone</option><option value="formal">Formal</option><option value="casual">Casual</option><option value="enthusiastic">Enthusiastic</option></select></Field></div></div>
+        <div className="mt-10 border-t border-border pt-8"><h3 className="text-lg font-semibold text-text-primary">Job Preferences</h3><div className="mt-7 grid gap-5 md:grid-cols-2"><Field label="Job Titles Seeking"><input className={`${fieldClassName} md:col-span-2`} defaultValue={defaults.jobTitlesSeeking} name="jobTitlesSeeking" placeholder="Frontend Engineer, React Developer" /></Field><Field label="Remote Preference"><select className={fieldClassName} defaultValue={defaults.remotePreference} name="remotePreference"><option value="">Select preference</option><option value="any">Any</option><option value="remote">Remote only</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select></Field><Field label="Salary Expectation (Optional)"><input className={fieldClassName} defaultValue={defaults.salaryExpectation} name="salaryExpectation" placeholder="E.g. $120k+" /></Field><Field label="Preferred Locations (Optional)"><input className={`${fieldClassName} md:col-span-2`} defaultValue={defaults.preferredLocations} name="preferredLocations" placeholder="E.g. New York, London" /></Field><Field label="Cover Letter Tone (Optional)"><select className={fieldClassName} defaultValue={defaults.coverLetterTone} name="coverLetterTone"><option value="">Select tone</option><option value="formal">Formal</option><option value="casual">Casual</option><option value="enthusiastic">Enthusiastic</option></select></Field></div></div>
         {actionState.status !== "idle" && <p aria-live="polite" className={`mt-6 text-sm font-medium ${actionState.status === "success" ? "text-success-dark" : "text-error"}`}>{actionState.message}</p>}
         <button className="mt-6 w-full rounded-md bg-accent px-4 py-3 text-base font-semibold text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover disabled:cursor-not-allowed disabled:opacity-60" disabled={isPending} type="submit">{isPending ? "Saving changes..." : "Save now"}</button>
       </section>

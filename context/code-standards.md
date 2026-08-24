@@ -247,13 +247,31 @@ All environment variables defined in `.env.local` for development. Never hardcod
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | lib/insforge-client.ts |
 | `BROWSERBASE_API_KEY`           | lib/browserbase.ts     |
 | `BROWSERBASE_PROJECT_ID`        | lib/browserbase.ts     |
-| `OPENAI_API_KEY`                | agent/ functions       |
+| `OPENCODE_API_KEY`              | lib/ai.ts              |
+| `AI_MODEL`                      | lib/ai.ts              |
 | `ADZUNA_APP_ID`                 | lib/adzuna.ts          |
 | `ADZUNA_APP_KEY`                | lib/adzuna.ts          |
 | `NEXT_PUBLIC_POSTHOG_KEY`       | lib/posthog-client.ts  |
 | `NEXT_PUBLIC_POSTHOG_HOST`      | lib/posthog-client.ts  |
 
 `NEXT_PUBLIC_` prefix means the variable is exposed to the browser. Never add `NEXT_PUBLIC_` to secret keys.
+
+---
+
+## AI Model
+
+The model is defined once and read from a single place. Never hardcode a model name anywhere else.
+
+```typescript
+// lib/ai.ts
+export const AI_MODEL = process.env.AI_MODEL ?? "gpt-5.6-luna";
+export function createAiClient(): OpenAI; // openai SDK pointed at https://opencode.ai/zen/v1
+```
+
+- All AI calls go through `createAiClient()` and `AI_MODEL` from `lib/ai.ts`
+- The gateway is OpenCode Zen, which is OpenAI-compatible — the `openai` SDK works with only a `baseURL` change
+- `AI_MODEL` in `.env.local` overrides the default, so a cheaper or free Zen model can be swapped in without a code change
+- Never write a literal model name in `agent/`, `lib/`, or `app/api/`
 
 ---
 
@@ -308,11 +326,11 @@ Approved dependencies for this project:
 - `@insforge/ssr` — InsForge client
 - `@browserbasehq/sdk` — Browserbase sessions
 - `@browserbasehq/stagehand` — AI browser control
-- `openai` — GPT-4o API
+- `openai` — AI model calls, pointed at the OpenCode Zen base URL
 - `posthog-js` — PostHog browser client
 - `posthog-node` — PostHog server client
 - `@react-pdf/renderer` — Resume PDF generation
-- `pdf-parse` — Extract text from uploaded PDF
+- `pdf-parse` (v2) — Extract text from uploaded PDF
 - `zod` — Schema validation
 - `lucide-react` — Icons
 - `tailwindcss` — Styling

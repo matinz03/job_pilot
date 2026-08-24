@@ -248,7 +248,7 @@ const jobRecord = {
 - Never pass `where` if location is empty — omit the parameter entirely
 - `source` is always `'search'` for Adzuna jobs — never any other value
 - `salary_is_predicted: "1"` means Adzuna estimated the salary — this is normal
-- Adzuna description is a snippet — GPT-4o scores from it, not a full description
+- Adzuna description is a snippet — the AI model scores from it, not a full description
 - Default country to `'us'` — support `gb`, `au`, `ca` as alternatives
 
 ---
@@ -298,7 +298,7 @@ const stagehand = new Stagehand({
   apiKey: process.env.BROWSERBASE_API_KEY!,
   projectId: process.env.BROWSERBASE_PROJECT_ID!,
   browserbaseSessionID: session.id,
-  model: { modelName: "openai/gpt-4o", apiKey: process.env.OPENAI_API_KEY! },
+  model: { modelName: AI_MODEL, apiKey: process.env.OPENCODE_API_KEY!, baseURL: "https://opencode.ai/zen/v1" },
   disablePino: true,
 });
 
@@ -351,7 +351,7 @@ Replace the existing Stagehand "Company Research Pattern" section in library-doc
 
 ### Company Research Pattern
 
-Three-step process: homepage extraction → sub-page extraction → GPT-4o synthesis.
+Three-step process: homepage extraction → sub-page extraction → AI synthesis.
 Job description and user profile come from DB — never re-fetch what you already have.
 Browser's only job is the company website.
 
@@ -412,7 +412,7 @@ const subPageData = await stagehand.extract({
   }),
 });
 
-// Step 3 — GPT-4o synthesis (after browser closes)
+// Step 3 — AI synthesis (after browser closes)
 // Feed three data sources: company research + job from DB + profile from DB
 const systemPrompt = `You are a sharp career strategist preparing a candidate to apply for a specific role. You are given (a) research collected from the company's own website, (b) the job posting, and (c) the candidate's profile. Produce a concise, concrete briefing that gives this specific candidate an edge for this specific role.
 
@@ -452,8 +452,8 @@ Experience: ${profile.years_experience} years, level ${profile.experience_level}
 Skills: ${profile.skills.join(", ")}
 Work history: ${JSON.stringify(profile.work_experience)}`;
 
-const response = await openai.chat.completions.create({
-  model: "gpt-4o",
+const response = await createAiClient().chat.completions.create({
+  model: AI_MODEL,
   response_format: { type: "json_object" },
   temperature: 0.4,
   messages: [
@@ -482,7 +482,7 @@ const response = await openai.chat.completions.create({
 - Always use `extract()` with a Zod schema — never parse raw HTML or use regex
 - Always wrap every `act()` and `extract()` in try/catch
 - Always call `await stagehand.close()` when done — ends the Browserbase session
-- Model is always `gpt-4o` — never use other models
+- Model always comes from `AI_MODEL` in `lib/ai.ts` — never write a literal model name
 - Temperature is `0.4` for synthesis — grounded but flexible enough to make real connections
 - Max 3 sub-pages — never exceed this on free plan
 - Always close session in finally block — never leave sessions open even if research fails
@@ -490,30 +490,44 @@ const response = await openai.chat.completions.create({
 - If browser research returns empty — still run synthesis with job + profile only
 - yourEdge, gapsToAddress, and smartQuestions are the most valuable fields — never skip them
 
-## OpenAI GPT-4o
+## AI Model — OpenCode Zen
 
-**Check first:** Check AGENTS.md for an installed OpenAI skill. The skill will have the latest API patterns and model capabilities.
+**Check first:** Check AGENTS.md for an installed skill covering the model gateway.
+
+The project has no OpenAI account. All AI calls go through the OpenCode Zen gateway, which is
+OpenAI-compatible, so the `openai` SDK works with only a `baseURL` change. The client and the model
+name live in `lib/ai.ts` and nowhere else.
+
+### Client
+
+```typescript
+// lib/ai.ts
+import OpenAI from "openai";
+
+const ZEN_BASE_URL = "https://opencode.ai/zen/v1";
+
+export const AI_MODEL = process.env.AI_MODEL ?? "gpt-5.6-luna";
+
+export function createAiClient(): OpenAI {
+  const apiKey = process.env.OPENCODE_API_KEY;
+  if (!apiKey) throw new Error("OPENCODE_API_KEY is not configured");
+  return new OpenAI({ apiKey, baseURL: ZEN_BASE_URL });
+}
+```
 
 ### Structured JSON Response
 
 ```typescript
-import OpenAI from "openai";
+import { AI_MODEL, createAiClient } from "@/lib/ai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-const response = await openai.chat.completions.create({
-  model: "gpt-4o",
+const response = await createAiClient().chat.completions.create({
+  model: AI_MODEL,
   response_format: { type: "json_object" },
   temperature: 0.3,
+  max_completion_tokens: 4000,
   messages: [
-    {
-      role: "system",
-      content: "You are a job matching assistant. Return only valid JSON.",
-    },
-    {
-      role: "user",
-      content: `Your prompt here`,
-    },
+    { role: "system", content: "You are a job matching assistant. Return only valid JSON." },
+    { role: "user", content: `Your prompt here` },
   ],
 });
 
@@ -525,21 +539,42 @@ const result = JSON.parse(response.choices[0].message.content!);
 - `0.3` — matching, scoring, extraction, research synthesis — deterministic results
 - `0.7` — resume generation — natural variation
 
-**Max tokens:**
+Zen reasoning models may reject a fixed `temperature`. Catch the 400, retry once without it, and
+never let that failure reach the user. `lib/resume-extraction.ts` has the working pattern.
 
-- Job matching + scoring: `300`
-- Company research synthesis: `800`
-- Resume generation: `1000`
-- Profile extraction from resume: `800`
+**Token limits:**
+
+Use `max_completion_tokens`, not `max_tokens` — Zen's GPT models follow the current OpenAI contract.
+Reasoning models spend tokens before emitting any JSON, so budget well above the size of the answer:
+
+- Job matching + scoring: `2000`
+- Profile extraction from resume: `4000`
+- Company research synthesis: `4000`
+- Resume generation: `4000`
 
 **Rules:**
 
-- Model string is always `'gpt-4o'` — never use other model names
-- Always use `response_format: { type: 'json_object' }` for structured data
-- Always parse `response.choices[0].message.content` as string — even with json_object it returns a string
-- Always validate parsed JSON before using — wrap in try/catch
+- Model always comes from `AI_MODEL` — never write a literal model name in a feature
+- `AI_MODEL` in `.env.local` swaps the model without a code change; Zen also offers free beta models,
+  useful when the paid balance runs out, but they are unreliable and not a shipping target
+- Always use `response_format: { type: "json_object" }` for structured data
+- Always parse `response.choices[0].message.content` as a string — even with `json_object`
+- Always validate parsed JSON with Zod before using it, and tolerate nulls, numbers, and bad
+  enum casing rather than failing — the model output is untrusted input
 - Match threshold is always `MATCH_THRESHOLD` from `lib/utils.ts` — never hardcode 70
-- Company research synthesis must always return a complete dossier — never return empty even if browser research failed
+- Company research synthesis must always return a complete dossier — never empty, even if
+  browser research failed
+- A model or gateway failure returns a human-readable message; the raw error only goes to the log
+
+**Cost reference** (per 1M tokens, checked 2026-08-24):
+
+| Model | Input | Output | Notes |
+| --- | --- | --- | --- |
+| `gpt-5.6-luna` | $0.20 | $1.20 | Project default. ~$0.0016 per resume extraction |
+| `gpt-5.4-nano` | $0.20 | $1.25 | Comparable fallback |
+| `gemini-3.5-flash-lite` | $0.30 | $2.50 | Stronger on long documents |
+| `claude-haiku-4-5` | $1.00 | $5.00 | |
+| `big-pickle` | free | free | Beta, no availability guarantee |
 
 ---
 
@@ -664,26 +699,29 @@ Only use these — others are silently ignored:
 
 ### Extract Text from Uploaded Resume
 
+v2 is class-based. There is no default export and no `pdf(buffer)` call.
+
 ```typescript
-import pdf from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
-// In API route handling resume upload
-export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const file = formData.get("resume") as File;
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  const pdfData = await pdf(buffer);
-  const extractedText = pdfData.text; // raw text content
-
-  // Send to GPT-4o for structured extraction
+const parser = new PDFParse({ data: new Uint8Array(await resume.arrayBuffer()) });
+try {
+  const result = await parser.getText();
+  const extractedText = result.text; // raw text content
+} finally {
+  await parser.destroy();
 }
 ```
 
 **Rules:**
 
 - Server-side only — never import in client components
-- `pdfData.text` is raw unformatted text — GPT-4o handles the structure extraction
+- `next.config.ts` must list `pdf-parse` in `serverExternalPackages` — it loads `pdfjs-dist`
+  through dynamic requires the server bundler cannot trace
+- Always call `parser.destroy()` in a `finally` block — never leave a parser open
+- `result.text` is raw unformatted text — the AI model handles the structure extraction
 - Always handle parse errors — some PDFs are image-based and return empty text
-- If `pdfData.text` is empty or very short — return error to user: "Could not extract text from this PDF. Please try a different file."
+- If the text is empty or under 200 characters — return this error to the user:
+  "Could not extract text from this PDF. Please try a different file."
+- The parsed source is always the resume already saved in Storage at `{user_id}/resume.pdf`,
+  never a file re-posted from the browser
