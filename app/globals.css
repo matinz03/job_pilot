@@ -105,6 +105,30 @@ body {
   );
 }
 
+@keyframes profile-field-save-success {
+  0%,
+  75% {
+    border-color: var(--color-success);
+  }
+
+  100% {
+    border-color: var(--color-border);
+  }
+}
+
+.profile-field-save-success,
+.profile-field-save-success:focus {
+  animation: profile-field-save-success 3.5s ease-out forwards;
+  --tw-ring-color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+}
+
+.profile-field-save-error,
+.profile-field-save-error:focus {
+  --tw-ring-color: var(--color-error) !important;
+  border-color: var(--color-error) !important;
+}
+
 button,
 input,
 select,
