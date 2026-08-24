@@ -18,6 +18,13 @@ After building any component — update this file with the component name, file 
 
 ## Components
 
+### Database Schema
+
+Files: `migrations/20260824182323_feature-04-database-schema.sql`
+Last updated: 2026-08-24
+
+**Pattern notes:** Non-visual foundation. User-owned application records share a direct `auth.users` reference and user-scoped RLS. Private resume objects use the `{user_id}/resume.pdf` path convention, enforced by storage RLS for every read and mutation.
+
 ### PostHog Instrumentation
 
 Files: `instrumentation-client.ts`, `lib/posthog-client.ts`, `lib/posthog-server.ts`
