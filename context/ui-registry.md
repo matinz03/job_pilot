@@ -197,3 +197,34 @@ Last updated: 2026-08-25
 | Accent usage | `#7c5cfc` (mirrors `--color-accent`) on section headings, the headline, and bullet marks |
 
 **Pattern notes:** A PDF renders outside the browser and cannot resolve the CSS variables in `ui-tokens.md`, so this file declares a four-value `palette` object mirroring those tokens by name. It is the only place in the project where hex literals are correct, and it must be updated whenever those four tokens change. Only the CSS properties listed in `library-docs.md` are used — anything else is silently ignored by `@react-pdf/renderer`. Layout is a single column: name, headline, contact line, links, then Summary, Experience, Education, and Skills, each with an uppercase accent heading. One page is guaranteed by content caps in `lib/resume-generation.ts` — 480-character summary, 4 bullets per role, 180 characters per bullet, 18 skills shown — because the renderer cannot report overflow.
+
+### Find Jobs Page
+
+Files: `app/find-jobs/page.tsx`, `components/find-jobs/SearchControls.tsx`, `components/find-jobs/JobFilters.tsx`, `components/find-jobs/JobsTable.tsx`, `components/find-jobs/JobsPagination.tsx`, `components/find-jobs/icons.tsx`
+Last updated: 2026-08-25
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-background`, `bg-surface`, `bg-surface-secondary` |
+| Border | `border border-border` |
+| Border radius | `rounded-2xl` cards, `rounded-lg` inputs, buttons, page controls and the company tile, `rounded-full` score bars |
+| Text — primary | `text-text-primary` |
+| Text — secondary | `text-text-secondary`, `text-text-muted` |
+| Spacing | `space-y-6` between cards, `p-6` search card, `p-4` filter card, `px-6 py-4` table cells |
+| Hover state | rows `hover:bg-surface-secondary`; primary `hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover`; secondary `hover:bg-surface-secondary` |
+| Shadow | `shadow-card` cards, `shadow-button` primary action |
+| Accent usage | `bg-accent` primary action, `bg-accent-muted border-accent text-accent` current page |
+
+**Pattern notes:** Three stacked cards inside the standard 1440px frame at 32px gutters — search controls, filter bar, then one card holding the table and its pagination footer. Card and form treatments match the profile page; inputs here use `rounded-lg` and a 12px vertical rhythm because the design shows a larger search field than the profile form's `rounded-md` controls.
+
+The search card pairs two labelled inputs with the accent primary action on the same baseline, the first input carrying an inset leading search icon. Its result banner is `bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line.
+
+The filter bar is one borderless full-width input with an inset search icon, separated from two secondary dropdown buttons by `sm:border-l sm:border-border`. The dropdowns are the standard secondary button treatment plus a trailing chevron. Both are inert until Feature 11.
+
+The jobs table uses no alternating row colours: white rows separated by `border-b border-border`, `last:border-b-0`, and `hover:bg-surface-secondary`. Headers are `text-xs font-medium uppercase tracking-wide text-text-secondary`. Column widths are fixed at 22/29/17/18/14 percent and rows are 65px, both measured from the design. The company cell pairs a 32px `rounded-lg border border-border bg-surface-secondary` icon tile with the company name as a link to the job details route.
+
+The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the fill width set from the score and its colour banded **as the design shows: `bg-success` from 90, `bg-info` from 80, `bg-warning` below**. This differs from the bands written in `ui-rules.md` (80/60) — the design won, and `ui-rules.md` should be reconciled to it.
+
+Pagination sits inside the table card above a `border-t border-border`: a results count with `font-semibold text-text-primary` numerals on the left, and page controls on the right. All page controls share `min-w-10 rounded-lg border px-3.5 py-2 text-sm font-medium`; the current page is `border-accent bg-accent-muted text-accent`, the gap is a borderless `...`, and Previous/Next disable to `text-text-muted` with no hover.
+
+Empty state: the table renders a centered `text-sm text-text-muted` line at `px-6 py-16` when there are no jobs.

@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 2 — Profile Page
-**Last completed:** 08 Resume PDF Generation from Profile
-**Next:** 09 Find Jobs Page — Full UI (Phase 3)
+**Phase:** Phase 3 — Find Jobs Page
+**Last completed:** 09 Find Jobs Page — Full UI
+**Next:** 10 Adzuna Job Discovery
 
 ---
 
@@ -30,7 +30,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 3 — Find Jobs Page
 
-- [ ] 09 Find Jobs Page — Full UI
+- [x] 09 Find Jobs Page — Full UI
 - [ ] 10 Adzuna Job Discovery
 - [ ] 11 Filter + Sort + Pagination
 
@@ -113,3 +113,15 @@ Decisions settled in an `/architect` session and carried into the implementation
 - Storage `upload(path, file)` takes a `File | Blob` and uses PUT semantics that replace the object in place, so the buffer is wrapped in a `Blob` and no `upsert` flag exists or is needed.
 - An `app/api/_name` folder is a private folder in the App Router and is not routed. A temporary verification route had to be named without the underscore prefix to be reachable.
 - Verified: 30 assertions through a temporary route inside the running dev server, covering the readiness bar, messy and malformed model output against the Zod caps, fact-verbatim merging, bullet fallback to `responsibilities`, and file-name slugging. Real `renderToBuffer` output is a valid single-page PDF, and the worst case the caps allow — 3 roles x 4 max-length bullets, max summary, 18 skills — still renders one page. A live call to llmapi.ai (`gpt-5.6-luna`) produced a grounded summary, present tense on the current role and past tense on the prior one, invented nothing, and rendered in one page at 2,889 bytes. The temporary route was removed; the project has no test harness. `npm run typecheck`, `npm run lint`, and `npm run build` are clean.
+
+### Feature 09 — Find Jobs Page, Full UI
+
+- `app/find-jobs/page.tsx` holds the mock data and composes four UI-only components in `components/find-jobs/`: `SearchControls`, `JobFilters`, `JobsTable`, `JobsPagination`. `types/index.ts` was created for the shared `JobListItem` type. A fifth file, `components/find-jobs/icons.tsx`, holds the four inline SVGs, because the search icon is needed by two components and duplicating it would be worse than one extra file in the folder.
+- Built to `context/designs/find-jobs.png`, which `ui-rules.md` names as the source of truth for visual decisions. **Three places where the design and the written specs disagree — all resolved in favour of the design, and all worth a decision before Features 10 and 11 build on them:**
+  - **No SOURCE column.** `build-plan.md` lists `SOURCE (Search/URL badge)` between Salary and Date Found; the design has five columns and no badge. The table renders five columns. `JobListItem.source` still exists and carries `"search" | "url"`, so adding the column later is a markup change only.
+  - **Match-score bands differ.** `ui-rules.md` says 80–100 green, 60–79 blue, below 60 orange. The design shows 88% and 85% blue and 72% orange, which is green from 90, blue from 80, orange below. The table uses the design bands. This is only bar colour — Feature 11's High Match filter is still `>= 70` per the build plan.
+  - **Page padding.** The design's page gutter is roughly 56px; `ui-rules.md` says 32px, and every other page already uses 32px. Kept at 32px, because matching the design here would make this the only inconsistent page.
+- The navbar in the design carries an icon beside each item. The built navbar has none. Left alone deliberately: it is shared across every page and belongs to Feature 01, not to this feature's scope.
+- Row density and column proportions were measured against the design and matched: 65px rows, a 32px company icon tile, and column widths of 22/29/17/18/14 percent.
+- Verified in a browser at 1440px through a temporary unauthenticated copy of the page, since `/find-jobs` is behind auth. Computed styles confirmed against `ui-tokens.md`: 16px card radius on `#FFFFFF` with `#E7EAF3` borders, 12px/500/`#6A7282` uppercase headers, a 6px `#E7EAF3` track, and fills of `#10B981`, `#61A8FF`, `#FF8904`. The temporary page was removed. The Browser pane could not composite, so no screenshot comparison was possible — the check was computed styles and geometry, not pixels. `typecheck`, `lint`, and `build` are clean.
+- All controls are inert by design. Search, filter, sort, and pagination are wired in Features 10 and 11.
