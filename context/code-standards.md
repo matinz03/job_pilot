@@ -293,8 +293,9 @@ npm run typecheck:fast  # TS 7 — same files, roughly 3x quicker, for the inner
 
 - Never widen the `typescript` pin past `~6.0.3`. typescript-eslint peers `<6.1.0`, and npm resolves a
   conflict by deleting the `@typescript-eslint` packages rather than failing, so lint breaks silently
-- `typescript7` is invoked as `node node_modules/typescript7/lib/tsc.js`, never by bin name — its
-  `tsc` and `tsserver` binaries would collide with the real ones
+- Both scripts invoke a compiler by path, never by bin name. Two packages declare a `tsc` bin, and
+  which one wins is npm's tie-break rather than a documented guarantee — naming the file makes each
+  script say which compiler it runs
 - Treat `npm run typecheck` as authoritative when the two disagree, and report the disagreement
 - TS 7 cannot be the only compiler until 7.1 ships the stable API. See `progress-tracker.md`
 
