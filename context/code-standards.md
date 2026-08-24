@@ -277,6 +277,30 @@ export function createAiClient(): OpenAI; // openai SDK pointed at LLM_API_URL
 
 ---
 
+## TypeScript Versions
+
+Two compilers are installed on purpose.
+
+| Package | Version | Used by |
+| --- | --- | --- |
+| `typescript` | `~6.0.3` | `next build`, the editor, ESLint, `npm run typecheck` |
+| `typescript7` | alias of `typescript@7` | `npm run typecheck:fast` only |
+
+```bash
+npm run typecheck       # TS 6 — the gate, matches what next build enforces
+npm run typecheck:fast  # TS 7 — same files, roughly 3x quicker, for the inner loop
+```
+
+- Never widen the `typescript` pin past `~6.0.3`. typescript-eslint peers `<6.1.0`, and npm resolves a
+  conflict by deleting the `@typescript-eslint` packages rather than failing, so lint breaks silently
+- Both scripts invoke a compiler by path, never by bin name. Two packages declare a `tsc` bin, and
+  which one wins is npm's tie-break rather than a documented guarantee — naming the file makes each
+  script say which compiler it runs
+- Treat `npm run typecheck` as authoritative when the two disagree, and report the disagreement
+- TS 7 cannot be the only compiler until 7.1 ships the stable API. See `progress-tracker.md`
+
+---
+
 ## Match Threshold
 
 The job match threshold is defined once as a constant. Never hardcode this value anywhere else.
