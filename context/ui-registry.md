@@ -18,6 +18,13 @@ After building any component — update this file with the component name, file 
 
 ## Components
 
+### PostHog Instrumentation
+
+Files: `instrumentation-client.ts`, `lib/posthog-client.ts`, `lib/posthog-server.ts`
+Last updated: 2026-08-24
+
+**Pattern notes:** Non-visual foundation. Next.js client instrumentation initializes PostHog before hydration; future server captures use a request-scoped client with immediate flushing. No UI pattern introduced.
+
 ### Navbar
 
 File: `components/layout/Navbar.tsx`
@@ -31,11 +38,11 @@ Last updated: 2026-08-23
 | Text — primary | `text-text-dark` |
 | Text — secondary | `text-text-dark` |
 | Spacing | `h-16`, `px-4 sm:px-6 lg:px-8` |
-| Hover state | `hover:text-accent`; primary CTA uses `hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover` |
-| Shadow | `shadow-button` on primary CTA |
+| Hover state | `hover:text-accent`; guest CTA uses `hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover`; authenticated logout uses `hover:bg-surface-secondary` |
+| Shadow | `shadow-button` on guest CTA; none on authenticated logout |
 | Accent usage | `hover:text-accent` |
 
-**Pattern notes:** Full-width 64px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered; primary action follows homepage primary CTA treatment: dark overlay, `shadow-button`, and visible hover lift.
+**Pattern notes:** Full-width 64px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
 
 ### Hero and CTA
 

@@ -9,7 +9,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
+.agents
+.claude
 # testing
 /coverage
 
@@ -32,7 +33,7 @@ yarn-error.log*
 
 # RTK local analytics database
 .rtk/
-.agents
+
 
 # env files (can opt-in for committing if needed)
 .env*

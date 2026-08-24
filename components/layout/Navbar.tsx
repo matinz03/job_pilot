@@ -1,7 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SignOutButton } from "@/components/layout/SignOutButton";
 
-export function Navbar() {
+type NavbarProps = {
+  isAuthenticated?: boolean;
+};
+
+export function Navbar({ isAuthenticated = false }: NavbarProps) {
   return (
     <header className="h-16 border-b border-border bg-surface">
       <nav
@@ -22,12 +27,16 @@ export function Navbar() {
             Profile
           </Link>
         </div>
-        <Link
-          className="rounded-md bg-overlay px-4 py-2 text-sm font-medium text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover"
-          href="/login"
-        >
-          Start for free
-        </Link>
+        {isAuthenticated ? (
+          <SignOutButton />
+        ) : (
+          <Link
+            className="rounded-md bg-overlay px-4 py-2 text-sm font-medium text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover"
+            href="/login"
+          >
+            Start for free
+          </Link>
+        )}
       </nav>
     </header>
   );
