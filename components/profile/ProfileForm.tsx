@@ -64,6 +64,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoSaveTimeoutRef = useRef<number | null>(null);
+  const feedbackTimeoutRef = useRef<number | null>(null);
   const lastEditedFieldRef = useRef<FormField | null>(null);
   const pendingSavesRef = useRef<PendingSave[]>([]);
   const [actionState, formAction, isPending] = useActionState(saveProfile, initialProfileActionState);
@@ -79,6 +80,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
 
   useEffect(() => () => {
     if (autoSaveTimeoutRef.current !== null) window.clearTimeout(autoSaveTimeoutRef.current);
+    if (feedbackTimeoutRef.current !== null) window.clearTimeout(feedbackTimeoutRef.current);
   }, []);
 
   useEffect(() => {
@@ -92,9 +94,14 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
     if (!field) return;
 
     field.classList.remove("profile-field-save-success", "profile-field-save-error");
+    if (feedbackTimeoutRef.current !== null) window.clearTimeout(feedbackTimeoutRef.current);
     if (actionState.status === "success") {
       void field.offsetWidth;
       field.classList.add("profile-field-save-success");
+      feedbackTimeoutRef.current = window.setTimeout(() => {
+        field.classList.remove("profile-field-save-success");
+        feedbackTimeoutRef.current = null;
+      }, 3500);
     } else {
       field.classList.add("profile-field-save-error");
     }

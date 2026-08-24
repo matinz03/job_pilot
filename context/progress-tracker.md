@@ -67,6 +67,7 @@ Update this file after every completed feature. Any AI agent reading this should
 - Profile saves now use a shared Zod validation module. Empty completion fields remain valid drafts, while invalid supplied values return accessible inline field errors and prevent both the profile write and any resume upload. Resume validation verifies PDF extension or MIME type, signature, and the 5 MB maximum before Storage is touched; profile dates use non-future `MM/YY` input with the current-year pivot.
 - Profile save feedback overrides the standard accent focus ring while a field is green or red, so only its current save state is visible. Each invalid field exposes its human-readable reason immediately below the control.
 - Resume status now labels the persisted uploaded filename explicitly instead of using generic on-file wording.
+- Successful field-save borders now fade out to the normal token before standard focus styling resumes.
 
 ---
 
