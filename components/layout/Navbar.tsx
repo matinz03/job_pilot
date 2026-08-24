@@ -4,9 +4,16 @@ import { SignOutButton } from "@/components/layout/SignOutButton";
 
 type NavbarProps = {
   isAuthenticated?: boolean;
+  activeItem?: "dashboard" | "find-jobs" | "profile";
 };
 
-export function Navbar({ isAuthenticated = false }: NavbarProps) {
+const navigationItems = [
+  { href: "/dashboard", label: "Dashboard", id: "dashboard" },
+  { href: "/find-jobs", label: "Find Jobs", id: "find-jobs" },
+  { href: "/profile", label: "Profile", id: "profile" },
+] as const;
+
+export function Navbar({ isAuthenticated = false, activeItem }: NavbarProps) {
   return (
     <header className="h-16 border-b border-border bg-surface">
       <nav
@@ -16,16 +23,24 @@ export function Navbar({ isAuthenticated = false }: NavbarProps) {
         <Link href="/" aria-label="JobPilot home" className="shrink-0">
           <Image src="/logo.png" alt="JobPilot" width={151} height={48} priority />
         </Link>
-        <div className="hidden items-center gap-10 text-sm font-medium text-text-dark md:flex">
-          <Link className="transition-colors hover:text-accent" href="/dashboard">
-            Dashboard
-          </Link>
-          <Link className="transition-colors hover:text-accent" href="/find-jobs">
-            Find Jobs
-          </Link>
-          <Link className="transition-colors hover:text-accent" href="/profile">
-            Profile
-          </Link>
+        <div className="hidden h-full items-center gap-8 text-sm font-medium md:flex">
+          {navigationItems.map((item) => {
+            const isActive = item.id === activeItem;
+
+            return (
+              <Link
+                className={`flex h-full items-center border-b-2 px-1 transition-colors hover:text-accent ${
+                  isActive
+                    ? "border-accent text-accent"
+                    : "border-transparent text-text-dark"
+                }`}
+                href={item.href}
+                key={item.id}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
         {isAuthenticated ? (
           <SignOutButton />

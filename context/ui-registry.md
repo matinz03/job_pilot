@@ -42,14 +42,14 @@ Last updated: 2026-08-23
 | Background | `bg-surface` |
 | Border | `border-b border-border` |
 | Border radius | none |
-| Text — primary | `text-text-dark` |
-| Text — secondary | `text-text-dark` |
+| Text — primary | active `text-accent`; inactive `text-text-dark` |
+| Text — secondary | none |
 | Spacing | `h-16`, `px-4 sm:px-6 lg:px-8` |
 | Hover state | `hover:text-accent`; guest CTA uses `hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover`; authenticated logout uses `hover:bg-surface-secondary` |
 | Shadow | `shadow-button` on guest CTA; none on authenticated logout |
-| Accent usage | `hover:text-accent` |
+| Accent usage | active `border-accent text-accent`; `hover:text-accent` |
 
-**Pattern notes:** Full-width 64px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
+**Pattern notes:** Full-width 64px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Authenticated routes pass their active item to display a 2px purple bottom border and accent text. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
 
 ### Hero and CTA
 
@@ -145,3 +145,22 @@ Last updated: 2026-08-24
 | Accent usage | `text-accent` eyebrow label |
 
 **Pattern notes:** Minimal authenticated landing card preserves the login surface pattern until Feature 14 supplies dashboard content.
+
+### Profile Form
+
+Files: `app/profile/page.tsx`, `components/profile/ProfileForm.tsx`
+Last updated: 2026-08-24
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-background`, `bg-surface`, `bg-surface-secondary` |
+| Border | `border border-border`; attention uses `border-error/25` |
+| Border radius | `rounded-2xl` cards, `rounded-xl` nested role/dropzone surfaces, `rounded-md` controls |
+| Text — primary | `text-text-primary`, `text-text-dark` |
+| Text — secondary | `text-text-secondary`, `text-text-muted` |
+| Spacing | `space-y-6`, `p-6 sm:p-10`, `gap-5` field grids |
+| Hover state | `hover:bg-surface-secondary`, primary `hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover` |
+| Shadow | `shadow-card` surfaces, `shadow-button` actions |
+| Accent usage | `bg-accent`, `text-accent`, `focus:ring-accent` |
+
+**Pattern notes:** Authenticated forms use a narrow 880px content column inside the standard 1440px page frame. Section cards use the standard white card treatment; grouped repeatable fields sit on `bg-surface-secondary` within one nested rounded layer. Input labels are uppercase `text-xs font-semibold`, and local-only controls preserve semantic button behavior until persistent profile actions are added.

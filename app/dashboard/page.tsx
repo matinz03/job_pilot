@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isAuthenticated />
+      <Navbar activeItem="dashboard" isAuthenticated />
       <main className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 lg:px-8">
         <section className="rounded-xl border border-border bg-surface p-6 shadow-card sm:p-8">
           <p className="text-sm font-medium text-accent">WELCOME TO JOBPILOT</p>
