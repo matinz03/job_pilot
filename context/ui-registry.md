@@ -223,7 +223,7 @@ The filter bar is one borderless full-width input with an inset search icon, sep
 
 The jobs table uses no alternating row colours: white rows separated by `border-b border-border`, `last:border-b-0`, and `hover:bg-surface-secondary`. Headers are `text-xs font-medium uppercase tracking-wide text-text-secondary`. Column widths are fixed at 22/29/17/18/14 percent and rows are 65px, both measured from the design. The company cell pairs a 32px `rounded-lg border border-border bg-surface-secondary` icon tile with the company name as a link to the job details route.
 
-The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the fill width set from the score and its colour banded **as the design shows: `bg-success` from 90, `bg-info` from 80, `bg-warning` below**. This differs from the bands written in `ui-rules.md` (80/60) — the design won, and `ui-rules.md` should be reconciled to it.
+The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the fill width set from the score and its colour banded **as the design shows: `bg-success` from 90, `bg-info` from 80, `bg-warning` below**. `ui-rules.md` has been reconciled to these bands. They are deliberately not Feature 11's High Match threshold (`>= 70`) — colour says how strong the match is, the filter says whether it is worth the user's time.
 
 Pagination sits inside the table card above a `border-t border-border`: a results count with `font-semibold text-text-primary` numerals on the left, and page controls on the right. All page controls share `min-w-10 rounded-lg border px-3.5 py-2 text-sm font-medium`; the current page is `border-accent bg-accent-muted text-accent`, the gap is a borderless `...`, and Previous/Next disable to `text-text-muted` with no hover.
 

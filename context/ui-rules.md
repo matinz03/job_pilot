@@ -20,7 +20,7 @@ The `--font-sans` variable is already declared in `@theme` in globals.css. Apply
 ## Layout
 
 - Page max-width: 1440px, centered
-- Main content area padding: 32px on all sides
+- Main content area padding: 32px on all sides — the design exports in `context/designs/` use a wider gutter (roughly 56px), which is a rendering artefact of those files, not the layout rule. Every page uses 32px.
 - Gap between page sections: 24px
 - Header height: 64px, full width, white background, padding 0 24px
 - All pages use top navbar only — no sidebar, no drawer
@@ -158,16 +158,19 @@ focus: ring-1 ring-accent border-accent
 Inline progress bar shown next to the percentage number.
 
 ```
-height: 4px
+height: 6px
+width: 96px
 border-radius: 9999px
 background track: #E7EAF3
 ```
 
-Fill color by score:
+Fill color by score — bands taken from `find-jobs.png`:
 
-- 80-100%: `#10B981` (green)
-- 60-79%: `#61A8FF` (blue)
-- Below 60%: `#FF8904` (orange)
+- 90-100%: `#10B981` (green)
+- 80-89%: `#61A8FF` (blue)
+- Below 80%: `#FF8904` (orange)
+
+These bands are deliberately not the same as Feature 11's High Match filter (`>= 70`). Bar colour answers "how strong is this match"; the filter answers "is this worth your time". Do not reconcile one to the other.
 
 ---
 
