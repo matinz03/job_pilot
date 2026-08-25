@@ -7,9 +7,9 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 3 — Find Jobs Page
-**Phase 3 is complete.**
-**Last completed:** 11 Filter + Sort + Pagination
-**Next:** 12 Job Details Page — Full UI (Phase 4)
+**Phase:** Phase 4 — Job Details Page
+**Last completed:** 12 Job Details Page — Full UI
+**Next:** 13 Company Research Agent
 
 ---
 
@@ -37,7 +37,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 4 — Job Details Page
 
-- [ ] 12 Job Details Page — Full UI
+- [x] 12 Job Details Page — Full UI
 - [ ] 13 Company Research Agent
 
 ### Phase 5 — Dashboard
@@ -263,3 +263,18 @@ The result count was hard-coded at ten. It is now a select in the search card, o
 - The run log now records what was asked for alongside what came back: "Berlin: 12 of up to 30 jobs", so a thin result is visibly Adzuna running out rather than the setting being ignored.
 - The search card is now four controls where the design has two plus a button. `lg:grid-cols-[1fr_1fr_auto_auto]`, with the select reusing the `appearance-none` plus overlaid chevron treatment from the filter bar.
 - **Verified:** 13 assertions — every offered option accepted in both number and string form, unoffered/oversized/negative/text/missing values all falling back to 10, and two live Adzuna calls confirming the API honours the count (5 returned 5, 30 returned 30). `typecheck`, `lint` and `build` are clean.
+
+### Feature 12 — Job Details Page, Full UI
+
+Built to `context/designs/job-details.png`. Every section reads real data from `jobs`; only Company Research is an empty state, which is what the build plan asks for at this stage.
+
+- **Files:** `app/find-jobs/[id]/page.tsx` plus the five components `architecture.md` names — `JobInfo`, `MatchScore`, `JobDescription`, `CompanyResearch`, `JobActions` — and a sixth, `icons.tsx`, for the twelve inline SVGs, following the same reasoning as `find-jobs/icons.tsx`.
+- The job is loaded by id **and** `user_id`, so another user's job id resolves to `notFound()` rather than leaking a posting. The id is validated as a uuid before it reaches the database, the same guard used for the run filter.
+- **The Research Company button is rendered but disabled**, with a title explaining why. Feature 13 owns the agent behind it. An enabled button that silently does nothing would be worse than one that says it is not ready.
+- **The match badge uses the jobs table's bands** (green from 90, blue from 80, orange below), not the design's colour. The design shows 85% in green; the table shows 85% in blue. One score reading as two different strengths in two places is incoherent, and the bands were explicitly settled earlier, so consistency won. This is the one place the page departs from the design.
+- Gap skills use the accent pill treatment the design shows, not the "red/orange badges" `build-plan.md` describes. The design is the visual source of truth, and framing gaps as neutral rather than alarming matches how the resume feature already talks about them.
+- The content column is `max-w-[880px]`, matching the profile page. The design's is nearer 780px; a second narrow-column width for one page was not worth the inconsistency.
+- Missing values degrade to readable text rather than blanks: no salary reads "Not listed", no job type reads "—", an unscored job explains itself, and an empty description points at the job post.
+- Apply Now and View Job Post both fall back from `external_apply_url` to `source_url`, and render nothing at all if neither exists, so there is never a dead link.
+- **Verified** through a temporary unauthenticated copy measured in the browser, since the real page needs a session: five sections all 880px and centred, four info cards in one row at 208px each, the apply button full width at 56px, the research button disabled, and no horizontal overflow at 1265px. The temporary page was removed. `typecheck`, `lint` and `build` are clean, and `/find-jobs/[id]` is registered.
+- **Not verified:** the page against a real job row. The query is scoped and typed but has not run with a session.

@@ -230,3 +230,32 @@ Pagination sits inside the table card above a `border-t border-border`: a result
 Pagination controls are `Link`s rather than buttons, so pages are real URLs; disabled Previous and Next render as `span`s with `aria-disabled`, keeping the shape without an inert link.
 
 Empty state: the table renders a centered `text-sm text-text-muted` line at `px-6 py-16` when there are no jobs, and the pagination footer is not rendered at all — an empty table shows no "Showing 0 to 0" row. The copy differs by cause: an unfiltered empty table invites a search, a filtered one invites clearing the filters.
+
+### Job Details Page
+
+Files: `app/find-jobs/[id]/page.tsx`, `components/job-details/JobInfo.tsx`, `MatchScore.tsx`, `JobDescription.tsx`, `CompanyResearch.tsx`, `JobActions.tsx`, `icons.tsx`
+Last updated: 2026-08-25
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-background`, `bg-surface`, `bg-surface-secondary` |
+| Border | `border border-border` |
+| Border radius | `rounded-2xl` sections, `rounded-xl` info cards and the apply button, `rounded-lg` icon tiles and secondary actions, `rounded-full` pills |
+| Text — primary | `text-text-primary` |
+| Text — secondary | `text-text-secondary`, `text-text-muted` |
+| Spacing | `space-y-6` / `gap-6` between sections, `p-6 sm:p-8` section padding, `p-5` info cards |
+| Hover state | primary `hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover`; secondary `hover:bg-surface-secondary`; back link `hover:text-accent` |
+| Shadow | `shadow-card` surfaces, `shadow-button` actions |
+| Accent usage | `bg-accent` apply action, `bg-accent-light text-accent` gap pills and the research tile |
+
+**Pattern notes:** A single 880px column inside the standard 1440px frame, matching the profile page. Sections stack at 24px. Card and shadow treatments are the project standard; what is new here is the **icon tile**, a `rounded-lg` square carrying a semantic tint — `bg-success-light text-success-dark` for salary and AI reasoning, `bg-info-light text-info-dark` for location, `bg-accent-light text-accent` for job type and company research, `bg-surface-secondary text-text-secondary` for neutral ones. Reuse this rather than inventing a second tinted-icon shape.
+
+Section headings come in two sizes: `text-xl font-semibold` for named sections (Job Description, Company Research) and `text-xs font-semibold uppercase tracking-wide text-text-secondary` for labelled ones (AI Match Reasoning, Required Skills vs Your Profile), both as the design shows.
+
+The match badge is `rounded-full px-3 py-1 text-sm font-medium` and **uses the jobs table's score bands**, not a fixed colour — `bg-success-light text-success-dark` from 90, `bg-info-light text-info-dark` from 80, `bg-warning/15 text-warning` below. The design renders 85% green; the table renders it blue, and one score must not read as two strengths.
+
+Skill pills are `rounded-full px-3 py-1.5 text-sm font-medium` with a leading icon: matched use `bg-success-light text-success-dark` with a check, gaps use `bg-accent-light text-accent` with a cross. Gaps are deliberately accent rather than error — a missing skill is a thing to address, not a failure.
+
+Info cards are a four-column grid of `rounded-xl border border-border bg-surface p-5 shadow-card`, each pairing a tinted icon tile with a `text-base font-semibold` value above a `text-xs uppercase text-text-muted` label. Values truncate rather than wrap.
+
+Empty state for research: a `rounded-full bg-surface-secondary` icon circle, a `text-base font-medium` line, and muted explanatory copy capped at 360px, sitting under a `border-t border-border` divider inside the same card as its heading and action.
