@@ -288,6 +288,10 @@ New bands, at the user's request: **green with a glow from 88, blue from 70, ora
 - **The glow is a token, not an inline colour.** `--shadow-success-glow` was added to `@theme` in `globals.css` alongside the existing card and button shadows, giving `shadow-success-glow`. Only the top band glows.
 - The job details badge uses the same bands on `-light` surfaces, so a score cannot read as two different strengths across two pages.
 
+### UI consistency — explain panel radius
+
+- The run scope notice now uses `rounded-xl`, matching the profile extraction review panel. Accent-bordered explain panels are nested surfaces, not section cards; `rounded-2xl` remains reserved for sections.
+
 **Instance list, with command evidence.** `grep -rn "GLOWING_MATCH_SCORE =\|HIGH_MATCH_SCORE =\|BLUE_MATCH_SCORE =\|STRONG_MATCH_SCORE ="` now returns exactly two lines, both in `lib/match-score.ts`. `grep -rln "match-score"` returns the four consumers:
 
 | File | What it uses |

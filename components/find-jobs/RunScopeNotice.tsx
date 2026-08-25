@@ -13,7 +13,7 @@ export function RunScopeNotice({ jobTitle, location, runId, total }: RunScopeNot
   const searched = [jobTitle, location].filter(Boolean).join(" in ");
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-accent/30 bg-surface-secondary px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-xl border border-accent/30 bg-surface-secondary px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-text-dark">
         <span className="font-semibold text-text-primary">
           {total} {total === 1 ? "job" : "jobs"}

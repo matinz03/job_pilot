@@ -294,7 +294,7 @@ Last updated: 2026-08-25
 | --- | --- |
 | Background | `bg-surface-secondary` |
 | Border | `border border-accent/30` |
-| Border radius | `rounded-2xl` |
+| Border radius | `rounded-xl` |
 | Text — primary | `font-semibold text-text-primary` for the count and the search terms |
 | Text — secondary | `text-sm text-text-dark` |
 | Spacing | `px-5 py-4`, `gap-3` |
@@ -337,8 +337,8 @@ Other radii belong to things that are not controls, and each has a reason:
 
 | Radius | Used for |
 | --- | --- |
-| `rounded-2xl` | section cards, the run scope notice |
-| `rounded-xl` | info cards, nested surfaces such as the resume dropzone and role cards |
+| `rounded-2xl` | section cards |
+| `rounded-xl` | info cards, nested surfaces such as the resume dropzone, role cards, and explain panels |
 | `rounded-lg` | icon tiles |
 | `rounded-full` | badges, skill pills, score bars, avatar-style circles |
 | `rounded-sm` | the profile page's uppercase field chips |
