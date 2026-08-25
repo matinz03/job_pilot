@@ -219,7 +219,7 @@ Last updated: 2026-08-25
 
 The search card pairs two labelled inputs with the accent primary action on the same baseline, the first input carrying an inset leading search icon. During a search both inputs and the button disable, and the button label becomes `Finding jobs...` — the same in-button progress pattern the profile card uses for extraction and generation. Its result banner is `bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line. Search failures use the matching error surface, `bg-error/5` with `text-error` and `role="alert"`, at the same size and position, so success and failure occupy the same slot.
 
-The filter bar is one borderless full-width input with an inset search icon, separated from two secondary dropdown buttons by `sm:border-l sm:border-border`. The dropdowns are the standard secondary button treatment plus a trailing chevron. Both are inert until Feature 11.
+The filter bar is one borderless full-width input with an inset search icon, separated from two dropdowns by `sm:border-l sm:border-border`. The dropdowns are native `<select>` elements carrying the secondary button treatment plus `appearance-none` and an overlaid, pointer-events-none chevron — so they look like the design's buttons while keeping native keyboard and mobile behaviour. All three write to the URL: the text input debounced at 400ms through `router.replace`, the selects immediately.
 
 The jobs table uses no alternating row colours: white rows separated by `border-b border-border`, `last:border-b-0`, and `hover:bg-surface-secondary`. Headers are `text-xs font-medium uppercase tracking-wide text-text-secondary`. Column widths are fixed at 22/29/17/18/14 percent and rows are 65px, both measured from the design. The company cell pairs a 32px `rounded-lg border border-border bg-surface-secondary` icon tile with the company name as a link to the job details route.
 
@@ -227,4 +227,6 @@ The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the
 
 Pagination sits inside the table card above a `border-t border-border`: a results count with `font-semibold text-text-primary` numerals on the left, and page controls on the right. All page controls share `min-w-10 rounded-lg border px-3.5 py-2 text-sm font-medium`; the current page is `border-accent bg-accent-muted text-accent`, the gap is a borderless `...`, and Previous/Next disable to `text-text-muted` with no hover.
 
-Empty state: the table renders a centered `text-sm text-text-muted` line at `px-6 py-16` when there are no jobs, and the pagination footer is not rendered at all — an empty table shows no "Showing 0 to 0" row.
+Pagination controls are `Link`s rather than buttons, so pages are real URLs; disabled Previous and Next render as `span`s with `aria-disabled`, keeping the shape without an inert link.
+
+Empty state: the table renders a centered `text-sm text-text-muted` line at `px-6 py-16` when there are no jobs, and the pagination footer is not rendered at all — an empty table shows no "Showing 0 to 0" row. The copy differs by cause: an unfiltered empty table invites a search, a filtered one invites clearing the filters.

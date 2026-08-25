@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CompanyIcon } from "@/components/find-jobs/icons";
 import type { JobListItem } from "@/types";
 
-type JobsTableProps = { jobs: JobListItem[] };
+type JobsTableProps = { jobs: JobListItem[]; emptyMessage: string };
 
 const headerCellClassName = "px-6 py-4 text-left text-xs font-medium uppercase tracking-wide text-text-secondary";
 
@@ -27,11 +27,11 @@ function MatchScore({ score }: { score: number }) {
   );
 }
 
-export function JobsTable({ jobs }: JobsTableProps) {
+export function JobsTable({ emptyMessage, jobs }: JobsTableProps) {
   if (jobs.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="text-sm text-text-muted">No jobs yet. Run a search to start matching roles to your profile.</p>
+        <p className="text-sm text-text-muted">{emptyMessage}</p>
       </div>
     );
   }

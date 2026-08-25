@@ -7,8 +7,9 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 3 — Find Jobs Page
-**Last completed:** 10 Adzuna Job Discovery
-**Next:** 11 Filter + Sort + Pagination
+**Phase 3 is complete.**
+**Last completed:** 11 Filter + Sort + Pagination
+**Next:** 12 Job Details Page — Full UI (Phase 4)
 
 ---
 
@@ -32,7 +33,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - [x] 09 Find Jobs Page — Full UI
 - [x] 10 Adzuna Job Discovery
-- [ ] 11 Filter + Sort + Pagination
+- [x] 11 Filter + Sort + Pagination
 
 ### Phase 4 — Job Details Page
 
@@ -149,3 +150,17 @@ Decisions settled in an `/architect` session and carried into the implementation
 **Verified in two passes, both through temporary routes in the dev server, both since removed.** First, 32 assertions offline: country detection across aliases, codes and fallbacks, salary formatting, relative time, and the Zod hardening of match output including score clamping at both ends, reason capping, case-insensitive skill dedupe and non-array rejection. Then, once the credentials were fixed, 12 assertions against the live path: a real Adzuna search for "Frontend Engineer" in London returned five postings, all with title, company and redirect URL, and all five scored in 11.8 seconds through the same parallel shape the agent uses. Scores came back differentiated — 86, 82, 78, 78, 72 — with matched and missing skills grounded in each posting, correctly reading domain gaps like crypto trading and construction as missing rather than inventing them. `typecheck`, `lint` and `build` are clean.
 
 **Still unverified: the database writes and the browser flow** — `runJobDiscovery` needs a signed-in session for RLS to permit the `jobs`, `agent_runs` and `agent_logs` writes, so the run lifecycle, the duplicate skip, the PostHog captures and the search button itself have not been exercised. Everything either side of those writes is proven. One logged-in search settles it.
+
+### Feature 11 — Filter, Sort and Pagination
+
+- **State lives in the URL and the query runs on the server.** `?q=&match=&sort=&page=` is parsed in `app/find-jobs/page.tsx` and turned into an InsForge query with `ilike`, `gte`/`lt`, `order` and `range` applied, plus `{ count: "exact" }` for the total. Twenty rows are fetched, never the whole table sliced in the browser. Links are shareable and back/forward works. `JobFilters` is the only client piece; the table stays a server component.
+- **20 jobs per page**, per `build-plan.md`. The design's "Showing 1 to 6 of 24" is mock — its own pager shows 8 pages, which never divided into 24 by 6.
+- The filter and sort controls are native `<select>` elements styled to the design's button shape with `appearance-none` and an overlaid chevron. Keyboard support and mobile pickers come free, which a div-based dropdown would have had to reimplement.
+- The text filter debounces at 400ms and uses `router.replace`, so typing does not fill the history stack. Any filter or sort change resets to page 1 — page 7 of the old result set means nothing in the new one.
+- **`sanitiseSearchTerm` is a security boundary, not cosmetics.** PostgREST parses `or=(...)` as a comma-separated grammar and `ilike` reads `*` and `%` as wildcards, so `,()*%\"'` are stripped before the term reaches the filter string. Without it, a query like `x,match_score.gte.0` would rewrite the filter rather than search for text.
+- Empty states differ by cause: no jobs at all reads "No jobs yet. Run a search…", while filters that match nothing read "No jobs match these filters." The pagination footer is not rendered when the total is zero.
+- Default sort is match score descending with `found_at` descending as a tiebreak, so equal scores stay in a stable order across pages.
+- **`react-hooks/set-state-in-effect` bit again**, as in Feature 07. Syncing the text input from the URL — needed so back, forward and shared links win over local state — is done by adjusting state during render against a stored previous value, which is React's documented answer, not by an effect.
+- **Files:** `lib/job-filters.ts` (parsing, sanitising, href building, pager shape, empty copy). `JobFilters.tsx` became a client component; `JobsPagination.tsx` now renders `Link`s and takes the parsed params; `JobsTable` takes an `emptyMessage`.
+- **Verified:** 32 assertions through a temporary route, since removed — parameter defaults and rejection of junk (unknown filters, page 0, negative and non-numeric pages, repeated params), the PostgREST injection stripping including a real injection attempt, href round-tripping back through the parser, the pager window at the start, middle and end of a long list with no single-page gaps, and the two empty states. `typecheck`, `lint` and `build` are clean.
+- **Not verified: anything requiring rows in the database** — the `ilike` and score filters, the ordering, and the `range` window have not been run against real data, because that needs a signed-in session for RLS. The query is built from verified inputs, but the queries themselves are untested.
