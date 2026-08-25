@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { JobFilters } from "@/components/find-jobs/JobFilters";
 import { JobsPagination } from "@/components/find-jobs/JobsPagination";
 import { JobsTable } from "@/components/find-jobs/JobsTable";
+import { RunScopeNotice } from "@/components/find-jobs/RunScopeNotice";
 import { SearchControls } from "@/components/find-jobs/SearchControls";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import {
@@ -42,10 +43,25 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
 
   const params = parseJobSearchParams(await searchParams);
 
+  // The run is looked up under the current user, so an id belonging to someone else finds nothing.
+  const { data: run } = params.run
+    ? await insforge.database
+      .from("agent_runs")
+      .select("job_title_searched, location_searched")
+      .eq("id", params.run)
+      .eq("user_id", user.id)
+      .maybeSingle()
+    : { data: null };
+  const scopedRun = run as { job_title_searched: string; location_searched: string | null } | null;
+
   let query = insforge.database
     .from("jobs")
     .select("id, company, title, match_score, salary, source, found_at", { count: "exact" })
     .eq("user_id", user.id);
+
+  if (params.run) {
+    query = query.eq("run_id", params.run);
+  }
 
   const term = sanitiseSearchTerm(params.query);
   if (term) {
@@ -91,6 +107,13 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
       <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <SearchControls />
         <JobFilters params={params} />
+        {params.run && (
+          <RunScopeNotice
+            jobTitle={scopedRun?.job_title_searched ?? ""}
+            location={scopedRun?.location_searched ?? ""}
+            total={total}
+          />
+        )}
         <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
           <div className="overflow-x-auto">
             <JobsTable emptyMessage={emptyMessage(params)} jobs={jobs} />

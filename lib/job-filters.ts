@@ -21,6 +21,8 @@ export type JobSearchParams = {
   match: MatchFilter;
   sort: SortOption;
   page: number;
+  /** When set, the list is scoped to the jobs one search run found. */
+  run: string;
 };
 
 type RawSearchParams = Record<string, string | string[] | undefined>;
@@ -33,12 +35,15 @@ export function parseJobSearchParams(params: RawSearchParams): JobSearchParams {
   const match = first(params.match);
   const sort = first(params.sort);
   const page = Number.parseInt(first(params.page), 10);
+  const run = first(params.run).trim();
 
   return {
     query: first(params.q).trim().slice(0, 100),
     match: MATCH_FILTERS.some((option) => option.value === match) ? (match as MatchFilter) : "all",
     sort: SORT_OPTIONS.some((option) => option.value === sort) ? (sort as SortOption) : "score",
     page: Number.isFinite(page) && page > 0 ? page : 1,
+    // Anything that is not a uuid is dropped rather than sent to the database as a filter value.
+    run: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(run) ? run : "",
   };
 }
 
@@ -57,6 +62,7 @@ export function buildJobsHref(params: Partial<JobSearchParams>): string {
   if (params.match && params.match !== "all") search.set("match", params.match);
   if (params.sort && params.sort !== "score") search.set("sort", params.sort);
   if (params.page && params.page > 1) search.set("page", String(params.page));
+  if (params.run) search.set("run", params.run);
   const queryString = search.toString();
   return queryString ? `/find-jobs?${queryString}` : "/find-jobs";
 }
@@ -87,6 +93,9 @@ export function buildPageList(currentPage: number, totalPages: number): (number 
 export function emptyMessage(params: JobSearchParams): string {
   if (params.query || params.match !== "all") {
     return "No jobs match these filters. Clear them, or search for more roles above.";
+  }
+  if (params.run) {
+    return "This search did not add anything new — everything it turned up is already in your list.";
   }
   return "No jobs yet. Run a search to start matching roles to your profile.";
 }

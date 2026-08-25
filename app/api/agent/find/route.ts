@@ -89,6 +89,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         data: {
+          runId: result.runId,
           message: result.message,
           jobsFound: result.jobsFound,
           jobsSaved: result.jobsSaved,

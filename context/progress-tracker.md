@@ -164,3 +164,19 @@ Decisions settled in an `/architect` session and carried into the implementation
 - **Files:** `lib/job-filters.ts` (parsing, sanitising, href building, pager shape, empty copy). `JobFilters.tsx` became a client component; `JobsPagination.tsx` now renders `Link`s and takes the parsed params; `JobsTable` takes an `emptyMessage`.
 - **Verified:** 32 assertions through a temporary route, since removed — parameter defaults and rejection of junk (unknown filters, page 0, negative and non-numeric pages, repeated params), the PostgREST injection stripping including a real injection attempt, href round-tripping back through the parser, the pager window at the start, middle and end of a long list with no single-page gaps, and the two empty states. `typecheck`, `lint` and `build` are clean.
 - **Not verified: anything requiring rows in the database** — the `ilike` and score filters, the ordering, and the `range` window have not been run against real data, because that needs a signed-in session for RLS. The query is built from verified inputs, but the queries themselves are untested.
+
+### Feature 11 follow-up — searching piled results up
+
+Reported from real use: searching for something new added to the list instead of showing what the search found. Two causes, neither a stale cache — `revalidatePath` and `router.refresh()` were both firing correctly.
+
+- The table showed every job ever saved, across all runs. That is deliberate, since Feature 15's dashboard counts depend on jobs accumulating.
+- Default sort is match score, so a new search's results scattered by score instead of surfacing. If the previous search had strong matches, the new jobs sat below the fold and it looked like nothing happened.
+
+**Fix: a successful search scopes the list to its own run.** The route returns `runId`, `SearchControls` navigates to `/find-jobs?run=<id>`, and the page adds `.eq("run_id", ...)`. A `RunScopeNotice` above the table says how many jobs the search found, names what was searched, states that other saved jobs are hidden, and links back to the unscoped list. Jobs still accumulate in the database, so nothing downstream loses data.
+
+- The run id is validated as a uuid before it reaches the database as a filter value, the same defensive shape as `sanitiseSearchTerm`.
+- The run is looked up under the current user, so an id belonging to someone else resolves to nothing rather than leaking a title.
+- `run` persists through filter, sort and page changes because `buildJobsHref` spreads the current params; only the "View all jobs" link clears it.
+- A scoped run that saved nothing new gets its own empty message rather than the generic one, since "no jobs yet" would be wrong when the user has plenty.
+- **Default sort stays match score.** Within a single run, best matches first is right; the recency problem was a symptom of the mixed list, not of the sort.
+- **Verified:** 12 assertions through a temporary route, since removed — uuid validation including an injection attempt, href serialisation and round-tripping, run persistence across filter changes, and the three empty-state branches. `typecheck`, `lint` and `build` are clean. The scoped query itself is still unverified against real rows.

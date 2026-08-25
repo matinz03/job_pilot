@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { SearchIcon, SparkleIcon } from "@/components/find-jobs/icons";
+import { buildJobsHref } from "@/lib/job-filters";
 
 type SearchOutcome = { message: string } | { error: string } | null;
 
@@ -39,7 +40,7 @@ export function SearchControls() {
         body: JSON.stringify({ jobTitle, location }),
       });
       const result: unknown = await response.json();
-      const payload = result as { success?: boolean; data?: { message?: string }; error?: string };
+      const payload = result as { success?: boolean; data?: { message?: string; runId?: string }; error?: string };
 
       if (!payload.success || !payload.data?.message) {
         setOutcome({ error: payload.error ?? SEARCH_FAILURE_MESSAGE });
@@ -47,7 +48,9 @@ export function SearchControls() {
       }
 
       setOutcome({ message: payload.data.message });
-      // The jobs table is server-rendered, so the new rows only appear after a refresh.
+      // Scope the list to what this search found, so a new search answers the question that was
+      // just asked instead of adding to the pile of everything saved so far.
+      router.replace(payload.data.runId ? buildJobsHref({ run: payload.data.runId }) : "/find-jobs", { scroll: false });
       router.refresh();
     } catch (error) {
       console.error("[components/find-jobs/SearchControls] job search", error);
