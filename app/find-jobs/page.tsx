@@ -22,6 +22,7 @@ type JobRow = {
   id: string;
   company: string | null;
   title: string | null;
+  location: string | null;
   match_score: number | null;
   salary: string | null;
   source: string | null;
@@ -58,7 +59,7 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
 
   let query = insforge.database
     .from("jobs")
-    .select("id, company, title, match_score, salary, source, found_at", { count: "exact" })
+    .select("id, company, title, location, match_score, salary, source, found_at", { count: "exact" })
     .eq("user_id", user.id);
 
   if (params.run) {
@@ -106,6 +107,7 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
     id: String(row.id),
     company: row.company ?? "Unknown company",
     role: row.title ?? "Untitled role",
+    location: row.location ?? "Not listed",
     matchScore: row.match_score ?? 0,
     salary: row.salary ?? "Not listed",
     source: (row.source === "url" ? "url" : "search") satisfies JobSource,

@@ -7,7 +7,9 @@ import { createPostHogServer } from "@/lib/posthog-server";
 import { profileFormValuesFromRow, type ProfileDatabaseRow } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// Three locations at ten jobs each, scored five at a time, lands well inside this. The old 120
+// was already being exceeded by a single ten-job run before the concurrency cap.
+export const maxDuration = 300;
 
 const PROFILE_COLUMNS = "full_name, email, phone, location, linkedin_url, portfolio_url, work_authorization, current_title, experience_level, years_experience, skills, industries, work_experience, education, job_titles_seeking, remote_preference, salary_expectation, preferred_locations, cover_letter_tone, completion_percentage, missing_fields, is_complete, resume_pdf_url, resume_pdf_key, resume_pdf_name";
 

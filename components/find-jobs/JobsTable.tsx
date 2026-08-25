@@ -6,8 +6,9 @@ type JobsTableProps = { jobs: JobListItem[]; emptyMessage: string };
 
 const headerCellClassName = "px-6 py-4 text-left text-xs font-medium uppercase tracking-wide text-text-secondary";
 
-// Column proportions are taken from the design so the five columns line up the same way.
-const columnWidths = ["w-[22%]", "w-[29%]", "w-[17%]", "w-[18%]", "w-[14%]"] as const;
+// The design's five columns, rebalanced to fit Location. Company and Role give up the width,
+// since they are the two that were widest to begin with.
+const columnWidths = ["w-[19%]", "w-[24%]", "w-[16%]", "w-[15%]", "w-[14%]", "w-[12%]"] as const;
 
 // The design bands the bar by score: green from 90, blue from 80, orange below.
 function scoreClassName(score: number): string {
@@ -42,9 +43,10 @@ export function JobsTable({ emptyMessage, jobs }: JobsTableProps) {
         <tr className="border-b border-border">
           <th className={`${headerCellClassName} ${columnWidths[0]}`} scope="col">Company</th>
           <th className={`${headerCellClassName} ${columnWidths[1]}`} scope="col">Role</th>
-          <th className={`${headerCellClassName} ${columnWidths[2]}`} scope="col">Match Score</th>
-          <th className={`${headerCellClassName} ${columnWidths[3]}`} scope="col">Salary Est.</th>
-          <th className={`${headerCellClassName} ${columnWidths[4]}`} scope="col">Date Found</th>
+          <th className={`${headerCellClassName} ${columnWidths[2]}`} scope="col">Location</th>
+          <th className={`${headerCellClassName} ${columnWidths[3]}`} scope="col">Match Score</th>
+          <th className={`${headerCellClassName} ${columnWidths[4]}`} scope="col">Salary Est.</th>
+          <th className={`${headerCellClassName} ${columnWidths[5]}`} scope="col">Date Found</th>
         </tr>
       </thead>
       <tbody>
@@ -61,6 +63,7 @@ export function JobsTable({ emptyMessage, jobs }: JobsTableProps) {
               </span>
             </td>
             <td className="px-6 py-4 text-sm text-text-primary">{job.role}</td>
+            <td className="px-6 py-4 text-sm text-text-secondary">{job.location}</td>
             <td className="px-6 py-4"><MatchScore score={job.matchScore} /></td>
             <td className="px-6 py-4 text-sm text-text-primary">{job.salary}</td>
             <td className="px-6 py-4 text-sm text-text-secondary">{job.foundAt}</td>

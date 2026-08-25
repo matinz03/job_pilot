@@ -17,6 +17,24 @@ type DiscoveryInput = {
 export const STRONG_MATCH_SCORE = 70;
 const RESULTS_PER_PAGE = 10;
 
+// Measured against the gateway: ten concurrent scoring calls take 131s for ten jobs, five take
+// 13.9s, three take 24.3s. It queues past five, so the pool is a throughput fix, not a politeness
+// one — a ten-job run went from over two minutes to under fifteen seconds.
+const SCORING_CONCURRENCY = 5;
+
+async function scoreWithPool<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
+  const output: R[] = new Array(items.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      output[index] = await run(items[index]);
+    }
+  }));
+  return output;
+}
+
 function jobKey(company: string, title: string): string {
   return `${company.trim().toLowerCase()}|${title.trim().toLowerCase()}`;
 }
@@ -40,21 +58,29 @@ async function log(
   }
 }
 
-function summarise(jobsFound: number, jobsSaved: number, duplicates: number, strongMatches: number): string {
+export function summariseRun(jobsFound: number, jobsSaved: number, duplicates: number, strongMatches: number): string {
   if (jobsFound === 0) {
     return "No jobs found for that search. Try a broader job title or a different location.";
   }
 
-  const parts = [`Found ${jobsFound} ${jobsFound === 1 ? "job" : "jobs"}`];
-  parts.push(`saved ${strongMatches} strong ${strongMatches === 1 ? "match" : "matches"}`);
-  const sentence = `${parts.join(" and ")}.`;
-  if (duplicates > 0) {
-    return `${sentence} ${duplicates} ${duplicates === 1 ? "was" : "were"} already in your list.`;
-  }
+  const found = `Found ${jobsFound} ${jobsFound === 1 ? "job" : "jobs"}`;
+  const alreadyHave = duplicates > 0
+    ? ` ${duplicates} ${duplicates === 1 ? "was" : "were"} already in your list.`
+    : "";
+
   if (jobsSaved === 0) {
-    return `${sentence} Nothing new was saved.`;
+    return duplicates > 0
+      ? `${found}, all of which you already have.`
+      : `${found}, but none could be saved.`;
   }
-  return sentence;
+
+  // "Saved 0 strong matches" reads as though nothing was saved at all, so the saved count leads
+  // and the strong count qualifies it.
+  const strong = strongMatches > 0
+    ? `, including ${strongMatches} strong ${strongMatches === 1 ? "match" : "matches"}`
+    : `, though none scored ${STRONG_MATCH_SCORE} or above`;
+
+  return `${found} and saved ${jobsSaved}${strong}.${alreadyHave}`;
 }
 
 function toJobRow(job: AdzunaJob, match: JobMatch, userId: string, runId: string) {
@@ -166,10 +192,12 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
       await log(insforge, { userId, runId, level: "info", message: `Skipped ${duplicates} ${duplicates === 1 ? "job" : "jobs"} already in your list.` });
     }
 
-    // One call per job so a single malformed response costs one job, not the whole run.
-    const scored = await Promise.all(
-      fresh.map(async (job) => ({ job, match: await scoreJob(profile, job) })),
-    );
+    // One call per job so a single malformed response costs one job, not the whole run, but
+    // capped at five in flight because the gateway queues beyond that.
+    const scored = await scoreWithPool(fresh, SCORING_CONCURRENCY, async (job) => ({
+      job,
+      match: await scoreJob(profile, job),
+    }));
 
     const rows: ReturnType<typeof toJobRow>[] = [];
     let failed = 0;
@@ -220,7 +248,7 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
       duplicates,
       failed,
       strongMatches,
-      message: summarise(results.length, savedJobs.length, duplicates, strongMatches),
+      message: summariseRun(results.length, savedJobs.length, duplicates, strongMatches),
       savedJobs,
     };
   } catch (error) {

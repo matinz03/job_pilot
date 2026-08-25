@@ -110,12 +110,15 @@ async function requestMatch(prompt: string): Promise<string | null> {
     ],
   };
 
+  // A stalled call would otherwise hold the whole run open until the route's own limit.
+  const options = { timeout: 60_000 };
+
   try {
-    const response = await client.chat.completions.create({ ...request, temperature: 0.3 });
+    const response = await client.chat.completions.create({ ...request, temperature: 0.3 }, options);
     return response.choices[0]?.message?.content ?? null;
   } catch (error) {
     if (!isUnsupportedParameterError(error, "temperature")) throw error;
-    const response = await client.chat.completions.create(request);
+    const response = await client.chat.completions.create(request, options);
     return response.choices[0]?.message?.content ?? null;
   }
 }

@@ -220,3 +220,14 @@ The design's placeholder reads "Remote, New York...". That was built as one loca
 - One entry failing logs a warning and the rest still run; every entry failing throws, so the run is marked `failed`.
 - **Verified:** 18 assertions, 14 offline over the parser — qualifier folding, duplicate collapse, the three-entry cap and its dropped list, remote country inheritance — plus four live. "Remote, New York" returned 10 genuinely remote postings ("Frontend Software Engineer - Remote", "Remote Frontend Engineer / React / WebGL / 3D") and 10 Manhattan postings, merging to 20. `typecheck`, `lint` and `build` are clean.
 - This replaces `normaliseLocation` from `083b14c`; that entry's description of remote handling no longer reflects the code.
+
+### Feature 10 follow-up — search timing, banner copy, and a Location column
+
+A checkup after the first real clear-all found a run that took 2m16s against a route ceiling of 120s. It would have been killed mid-flight in production, leaving `agent_runs` stuck at `running`.
+
+- **The gateway queues past five concurrent calls.** Measured over the same ten jobs: a pool of 10 took 130.7s, a pool of 5 took 13.9s, a pool of 3 took 24.3s. Scoring now runs through a pool of five, which took that ten-job run from over two minutes to under fifteen seconds. This was throughput, not politeness — firing all ten at once was roughly nine times slower than throttling to five.
+- Because of that, the approved "10 per location, capped at 3" budget stands unchanged. Thirty jobs at five in flight fits comfortably; there was no need to cut coverage.
+- `maxDuration` on `POST /api/agent/find` went from 120 to 300, and each model call now carries a 60s timeout so one stalled request cannot hold a run open to the route limit.
+- **Banner copy.** "Found 10 jobs and saved 0 strong matches." read as though nothing had been saved, when in fact all ten were. The saved count now leads and the strong count qualifies it: "Found 10 jobs and saved 10, though none scored 70 or above." All seven branches were checked, including the singular case that first read "1 of them strong match" and now reads "including 1 strong match".
+- **A Location column was added to the jobs table**, at the user's request. It matters more now that one search can span several locations — without it a remote result and a New York result are indistinguishable in the list. Six columns rather than the design's five; Company and Role gave up the width, since they were widest to begin with. `jobs.location` was already populated from Adzuna, so no migration.
+- **Verified:** the three concurrency measurements against the live gateway, all seven copy branches, and clean `typecheck`, `lint` and `build`. The pool and the new copy have not been exercised through a real signed-in search yet.
