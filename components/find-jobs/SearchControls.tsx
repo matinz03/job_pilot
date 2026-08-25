@@ -9,8 +9,8 @@ import { DEFAULT_JOBS_PER_LOCATION, JOBS_PER_LOCATION_OPTIONS } from "@/lib/adzu
 type SearchOutcome = { message: string } | { error: string } | null;
 
 const labelClassName = "text-xs font-semibold uppercase tracking-wide text-text-dark";
-const selectClassName = "w-full cursor-pointer appearance-none rounded-lg border border-border bg-surface py-3 pl-4 pr-10 text-sm text-text-primary outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-secondary disabled:text-text-muted";
-const inputClassName = "w-full rounded-lg border border-border bg-surface py-3 pl-11 pr-4 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-secondary disabled:text-text-muted";
+const selectClassName = "w-full cursor-pointer appearance-none rounded-md border border-border bg-surface py-3 pl-4 pr-10 text-sm text-text-primary outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-secondary disabled:text-text-muted";
+const inputClassName = "w-full rounded-md border border-border bg-surface py-3 pl-11 pr-4 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-secondary disabled:text-text-muted";
 
 const SEARCH_FAILURE_MESSAGE = "Could not search for jobs right now. Please try again.";
 

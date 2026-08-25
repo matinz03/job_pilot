@@ -207,7 +207,7 @@ Last updated: 2026-08-25
 | --- | --- |
 | Background | `bg-background`, `bg-surface`, `bg-surface-secondary` |
 | Border | `border border-border` |
-| Border radius | `rounded-2xl` cards, `rounded-lg` inputs, selects and the company tile, `rounded-md` every action and page control, `rounded-full` score bars |
+| Border radius | `rounded-2xl` cards, `rounded-md` every input, select, action and page control, `rounded-lg` the company icon tile and inline message banners, `rounded-full` score bars |
 | Text — primary | `text-text-primary` |
 | Text — secondary | `text-text-secondary`, `text-text-muted` |
 | Spacing | `space-y-6` between cards, `p-6` search card, `p-4` filter card, `px-6 py-4` table cells |
@@ -215,7 +215,7 @@ Last updated: 2026-08-25
 | Shadow | `shadow-card` cards, `shadow-button` primary action |
 | Accent usage | `bg-accent` primary action, `bg-accent-muted border-accent text-accent` current page |
 
-**Pattern notes:** Three stacked cards inside the standard 1440px frame at 32px gutters — search controls, filter bar, then one card holding the table and its pagination footer. `SearchControls` is the page's only client component; the table reads real jobs from the database on the server. Card and form treatments match the profile page; inputs here use `rounded-lg` and a 12px vertical rhythm because the design shows a larger search field than the profile form's `rounded-md` controls.
+**Pattern notes:** Three stacked cards inside the standard 1440px frame at 32px gutters — search controls, filter bar, then one card holding the table and its pagination footer. `SearchControls` is the page's only client component; the table reads real jobs from the database on the server. Card and form treatments match the profile page; inputs here keep a 12px vertical rhythm because the design shows a larger search field than the profile form, but share its `rounded-md` radius.
 
 The search card carries three labelled controls and the accent primary action on one baseline — job title, location, and a jobs-per-location select using the same `appearance-none` plus overlaid chevron treatment as the filter bar, the first input carrying an inset leading search icon. During a search both inputs and the button disable, and the button label becomes `Finding jobs...` — the same in-button progress pattern the profile card uses for extraction and generation. Its result banner is `bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line. Search failures use the matching error surface, `bg-error/5` with `text-error` and `role="alert"`, at the same size and position, so success and failure occupy the same slot.
 
@@ -327,18 +327,18 @@ Last updated: 2026-08-25
 
 Both fall back from `external_apply_url` to `source_url` and **render nothing at all when neither exists** — an apply button that goes nowhere is worse than no button. Both carry `target="_blank"` with `rel="noopener noreferrer"`.
 
-## Radius rule — actions
+## Radius rule — controls
 
-Every action in the project — button or link, primary, secondary, destructive or pagination — is `rounded-md`, matching the 8px button radius in `ui-rules.md`. Verified across the codebase: 29 action elements, all `rounded-md`.
+**Everything the user operates is `rounded-md`** — every button and action link, primary, secondary, destructive or pagination, and every input, select and textarea. That matches the 8px `ui-rules.md` specifies for both buttons and form inputs. Verified across the codebase: 29 action elements and all four form-control class definitions.
 
-Non-`rounded-md` radii are for things that are not actions, and each has a reason:
+Other radii belong to things that are not controls, and each has a reason:
 
 | Radius | Used for |
 | --- | --- |
 | `rounded-2xl` | section cards, the run scope notice |
-| `rounded-xl` | info cards, nested surfaces such as the resume dropzone |
-| `rounded-lg` | inputs and selects, icon tiles, inline message banners |
+| `rounded-xl` | info cards, nested surfaces such as the resume dropzone and role cards |
+| `rounded-lg` | icon tiles, inline message banners |
 | `rounded-full` | badges, skill pills, score bars, avatar-style circles |
 | `rounded-sm` | the profile page's uppercase field chips |
 
-**Known remaining drift:** the Find Jobs search inputs and both filter selects are `rounded-lg`, while `ui-rules.md` specifies 8px for form inputs too. That is a separate reconciliation from this one and has not been made.
+When adding a control, do not reach for a larger radius to make it feel softer — size, weight and colour carry emphasis, radius does not.

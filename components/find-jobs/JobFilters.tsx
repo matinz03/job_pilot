@@ -14,7 +14,7 @@ import {
 
 type JobFiltersProps = { params: JobSearchParams };
 
-const selectClassName = "peer w-full cursor-pointer appearance-none rounded-lg border border-border bg-surface py-2.5 pl-4 pr-10 text-sm font-medium text-text-primary outline-none transition-colors hover:bg-surface-secondary focus:border-accent focus:ring-1 focus:ring-accent";
+const selectClassName = "peer w-full cursor-pointer appearance-none rounded-md border border-border bg-surface py-2.5 pl-4 pr-10 text-sm font-medium text-text-primary outline-none transition-colors hover:bg-surface-secondary focus:border-accent focus:ring-1 focus:ring-accent";
 
 export function JobFilters({ params }: JobFiltersProps) {
   const router = useRouter();
