@@ -193,3 +193,16 @@ Both surfaced from a question about whether the match scores were real. They are
 - US cities need no entries, since `us` is the fallback.
 - **Verified live:** 18 assertions, 16 offline plus two real Adzuna calls. "Backend Engineer" in London now returns five genuine London postings (SeedLegals, Gold Group in Farringdon and Central London) where it previously returned none, and "remote" returns five. `typecheck`, `lint` and `build` are clean.
 - **The dedupe fix itself is unverified against real rows** — it needs a signed-in search to exercise. The 10 existing duplicate pairs are still in the database; they predate the fix and would need a cleanup query to remove.
+
+### Deleting search results
+
+Requested after the real jobs table turned out to hold 58 rows across 20 runs, 10 of them duplicated pairs.
+
+- **Two scopes, deliberately apart.** `Delete this search` sits in the run notice, next to the jobs it removes, so what disappears is on screen when you press it. `Clear all N saved jobs` sits below the table as a quiet underlined action, away from the routine controls, because its blast radius is much larger.
+- **Jobs, run and logs are deleted together.** `jobs.run_id` is `on delete set null`, so deleting the run alone would orphan its jobs rather than remove them — every table is deleted explicitly, in the order logs, jobs, runs. Leaving the run behind would also strand a `jobs_found` count describing jobs that no longer exist, which Feature 16's Recent Activity would render as "Found 10 jobs" for a search with none.
+- **Inline confirm naming the count.** The first click swaps the control for "Delete 10 jobs? This cannot be undone." with cancel and delete, reusing the resume-replace pattern from the profile page rather than a browser dialog. The number is the point of the confirm.
+- **Server Actions, not an API route.** `architecture.md` reserves Server Actions for UI-triggered mutations and API routes for agent work, so both live in `actions/jobs.ts` — the file the architecture already named.
+- Every delete is scoped by `user_id` explicitly as well as by RLS, per the project invariant, and the run id is validated as a uuid before it reaches the database.
+- The clear-all label needs the total across every saved job, not the filtered view, so the page runs a separate `head: true` count whenever a run, query or match filter is active.
+- **Files:** `actions/jobs.ts` (`deleteSearchRun`, `deleteAllJobs`), `components/find-jobs/DeleteAction.tsx` (shared confirm behaviour, used by both).
+- **Verified:** `typecheck`, `lint` and `build` are clean, and the pre-delete state was recorded for comparison — 58 jobs, 20 runs, 48 logs, 0 orphaned jobs. **The deletes themselves are unverified**: they need a signed-in session, and running them from here would destroy real data rather than test it. The counts above are the baseline to check against after the first use.

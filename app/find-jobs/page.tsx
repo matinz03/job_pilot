@@ -5,6 +5,8 @@ import { JobsPagination } from "@/components/find-jobs/JobsPagination";
 import { JobsTable } from "@/components/find-jobs/JobsTable";
 import { RunScopeNotice } from "@/components/find-jobs/RunScopeNotice";
 import { SearchControls } from "@/components/find-jobs/SearchControls";
+import { DeleteAction } from "@/components/find-jobs/DeleteAction";
+import { deleteAllJobs } from "@/actions/jobs";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import {
   HIGH_MATCH_SCORE,
@@ -90,6 +92,15 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
   }
 
   const total = count ?? 0;
+
+  // The clear-all label must name every saved job, not just the ones this view is showing.
+  const { count: savedJobsCount } = params.run || params.query || params.match !== "all"
+    ? await insforge.database
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+    : { count };
+  const savedJobs = savedJobsCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const jobs: JobListItem[] = ((rows as JobRow[] | null) ?? []).map((row) => ({
     id: String(row.id),
@@ -111,6 +122,7 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
           <RunScopeNotice
             jobTitle={scopedRun?.job_title_searched ?? ""}
             location={scopedRun?.location_searched ?? ""}
+            runId={params.run}
             total={total}
           />
         )}
@@ -128,6 +140,20 @@ export default async function FindJobsPage({ searchParams }: FindJobsPageProps) 
             />
           )}
         </section>
+        {savedJobs > 0 && (
+          <div className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-text-secondary">
+              Clearing removes every saved job and its search history. Searches can always be run again.
+            </p>
+            <DeleteAction
+              action={deleteAllJobs}
+              count={savedJobs}
+              idleLabel={`Clear all ${savedJobs} saved jobs`}
+              redirectTo="/find-jobs"
+              tone="quiet"
+            />
+          </div>
+        )}
       </main>
     </div>
   );
