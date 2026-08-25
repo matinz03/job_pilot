@@ -253,3 +253,13 @@ Typing a bare country returned nothing. Measured against the live API: `where=Ge
 - **Verified:** 20 assertions — 16 offline over every parse shape including the three folding cases above, and four live confirming that every entry of "Germany", "Berlin, Germany", "France, Germany" and "Remote, Berlin" returns real jobs. `typecheck`, `lint` and `build` are clean.
 - The Location placeholder now reads "Remote, Berlin, Germany..." so the field teaches what it accepts.
 - Still capped at three locations, ten results each, scored five at a time.
+
+### Feature 10 follow-up — a jobs-per-location selector
+
+The result count was hard-coded at ten. It is now a select in the search card, offering 5, 10, 20 or 30 per location, defaulting to 10.
+
+- **Capped at 30 per location.** Every job costs one model call, so the ceiling is a cost and time decision, not an Adzuna one — Adzuna itself allows 50 per page. At the measured throughput (five in flight, ~14s per ten jobs) the widest search, 30 across 3 locations, is 90 jobs at roughly 130s and about 9 cents. That fits inside the route's 300s ceiling, but it is the case to watch if the ceiling or the gateway's throughput changes.
+- The value is validated server-side through `parseJobsPerLocation`, which falls back to 10 for anything not offered rather than failing the search. A client that posts 500 gets 10, not an error.
+- The run log now records what was asked for alongside what came back: "Berlin: 12 of up to 30 jobs", so a thin result is visibly Adzuna running out rather than the setting being ignored.
+- The search card is now four controls where the design has two plus a button. `lg:grid-cols-[1fr_1fr_auto_auto]`, with the select reusing the `appearance-none` plus overlaid chevron treatment from the filter bar.
+- **Verified:** 13 assertions — every offered option accepted in both number and string form, unoffered/oversized/negative/text/missing values all falling back to 10, and two live Adzuna calls confirming the API honours the count (5 returned 5, 30 returned 30). `typecheck`, `lint` and `build` are clean.

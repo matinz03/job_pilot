@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { runJobDiscovery } from "@/agent/adzuna";
+import { parseJobsPerLocation } from "@/lib/adzuna";
 import { createInsforgeServer } from "@/lib/insforge-server";
 import { createPostHogServer } from "@/lib/posthog-server";
 import { profileFormValuesFromRow, type ProfileDatabaseRow } from "@/lib/profile";
@@ -16,6 +17,8 @@ const PROFILE_COLUMNS = "full_name, email, phone, location, linkedin_url, portfo
 const requestSchema = z.object({
   jobTitle: z.string().trim().min(2, "Enter a job title to search for.").max(120),
   location: z.string().trim().max(120).default(""),
+  // Anything outside the offered options falls back to the default rather than failing the search.
+  jobsPerLocation: z.preprocess(parseJobsPerLocation, z.number()),
 });
 
 function failure(error: string, status: number) {
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
         profile,
         jobTitle: parsed.data.jobTitle,
         location: parsed.data.location,
+        jobsPerLocation: parseJobsPerLocation(parsed.data.jobsPerLocation),
       });
 
       for (const job of result.savedJobs) {

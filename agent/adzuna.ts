@@ -1,4 +1,4 @@
-import { MAX_LOCATIONS, formatSalary, parseLocations, searchJobs, type AdzunaJob } from "@/lib/adzuna";
+import { DEFAULT_JOBS_PER_LOCATION, MAX_LOCATIONS, formatSalary, parseLocations, searchJobs, type AdzunaJob, type JobsPerLocation } from "@/lib/adzuna";
 import type { createInsforgeServer } from "@/lib/insforge-server";
 import type { ProfileFormValues } from "@/lib/profile";
 import { scoreJob } from "@/agent/matcher";
@@ -12,10 +12,10 @@ type DiscoveryInput = {
   profile: ProfileFormValues;
   jobTitle: string;
   location: string;
+  jobsPerLocation?: JobsPerLocation;
 };
 
 export const STRONG_MATCH_SCORE = 70;
-const RESULTS_PER_PAGE = 10;
 
 // Measured against the gateway: ten concurrent scoring calls take 131s for ten jobs, five take
 // 13.9s, three take 24.3s. It queues past five, so the pool is a throughput fix, not a politeness
@@ -105,7 +105,7 @@ function toJobRow(job: AdzunaJob, match: JobMatch, userId: string, runId: string
 }
 
 export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryResult> {
-  const { insforge, jobTitle, location, profile, userId } = input;
+  const { insforge, jobTitle, jobsPerLocation = DEFAULT_JOBS_PER_LOCATION, location, profile, userId } = input;
 
   const { data: run, error: runError } = await insforge.database
     .from("agent_runs")
@@ -134,8 +134,8 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
           ? `${entry.label || entry.country.toUpperCase()} country-wide`
           : entry.label;
       try {
-        const jobs = await searchJobs(jobTitle, entry, RESULTS_PER_PAGE);
-        await log(insforge, { userId, runId, level: "info", message: `Searched ${entry.country.toUpperCase()} for "${jobTitle}" — ${where}: ${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}.` });
+        const jobs = await searchJobs(jobTitle, entry, jobsPerLocation);
+        await log(insforge, { userId, runId, level: "info", message: `Searched ${entry.country.toUpperCase()} for "${jobTitle}" — ${where}: ${jobs.length} of up to ${jobsPerLocation} ${jobs.length === 1 ? "job" : "jobs"}.` });
         return { jobs, failed: false };
       } catch (error) {
         console.error("[agent/adzuna] search", where, error);

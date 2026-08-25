@@ -54,6 +54,20 @@ const remoteTerms = new Set(["remote", "anywhere", "worldwide", "work from home"
 
 export const MAX_LOCATIONS = 3;
 
+// Every job returned costs one model call to score. At the measured throughput — five in flight,
+// roughly 14s per ten jobs — the widest search (30 x 3 locations = 90 jobs) lands near 130s,
+// inside the route's 300s ceiling. Adzuna itself allows up to 50 per page.
+export const JOBS_PER_LOCATION_OPTIONS = [5, 10, 20, 30] as const;
+export const DEFAULT_JOBS_PER_LOCATION = 10;
+export type JobsPerLocation = (typeof JOBS_PER_LOCATION_OPTIONS)[number];
+
+export function parseJobsPerLocation(value: unknown): JobsPerLocation {
+  const count = Number(value);
+  return (JOBS_PER_LOCATION_OPTIONS as readonly number[]).includes(count)
+    ? (count as JobsPerLocation)
+    : DEFAULT_JOBS_PER_LOCATION;
+}
+
 /**
  * Adzuna needs a different request for each kind of location:
  * - `remote`  — a keyword on `what`, no `where`. `where=remote` returns nothing.

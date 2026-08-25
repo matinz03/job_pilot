@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { SearchIcon, SparkleIcon } from "@/components/find-jobs/icons";
+import { ChevronDownIcon, SearchIcon, SparkleIcon } from "@/components/find-jobs/icons";
 import { buildJobsHref } from "@/lib/job-filters";
+import { DEFAULT_JOBS_PER_LOCATION, JOBS_PER_LOCATION_OPTIONS } from "@/lib/adzuna";
 
 type SearchOutcome = { message: string } | { error: string } | null;
 
 const labelClassName = "text-xs font-semibold uppercase tracking-wide text-text-dark";
+const selectClassName = "w-full cursor-pointer appearance-none rounded-lg border border-border bg-surface py-3 pl-4 pr-10 text-sm text-text-primary outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-secondary disabled:text-text-muted";
 const inputClassName = "w-full rounded-lg border border-border bg-surface py-3 pl-11 pr-4 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-secondary disabled:text-text-muted";
 
 const SEARCH_FAILURE_MESSAGE = "Could not search for jobs right now. Please try again.";
@@ -24,6 +26,7 @@ export function SearchControls() {
     const formData = new FormData(event.currentTarget);
     const jobTitle = String(formData.get("jobTitle") ?? "").trim();
     const location = String(formData.get("location") ?? "").trim();
+    const jobsPerLocation = Number(formData.get("jobsPerLocation") ?? DEFAULT_JOBS_PER_LOCATION);
 
     if (jobTitle.length < 2) {
       setOutcome({ error: "Enter a job title to search for." });
@@ -37,7 +40,7 @@ export function SearchControls() {
       const response = await fetch("/api/agent/find", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, location }),
+        body: JSON.stringify({ jobTitle, location, jobsPerLocation }),
       });
       const result: unknown = await response.json();
       const payload = result as { success?: boolean; data?: { message?: string; runId?: string }; error?: string };
@@ -62,7 +65,7 @@ export function SearchControls() {
 
   return (
     <section className="rounded-2xl border border-border bg-surface p-6 shadow-card">
-      <form className="grid gap-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end" onSubmit={handleSubmit}>
+      <form className="grid gap-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end" onSubmit={handleSubmit}>
         <label className="block">
           <span className={labelClassName}>Job Title</span>
           <span className="relative mt-2 block">
@@ -77,6 +80,20 @@ export function SearchControls() {
           <span className={labelClassName}>Location</span>
           <span className="relative mt-2 block">
             <input className={`${inputClassName} pl-4`} disabled={isSearching} name="location" placeholder="Remote, Berlin, Germany..." type="text" />
+          </span>
+        </label>
+
+        <label className="block">
+          <span className={labelClassName}>Jobs per location</span>
+          <span className="relative mt-2 block">
+            <select className={selectClassName} defaultValue={DEFAULT_JOBS_PER_LOCATION} disabled={isSearching} name="jobsPerLocation">
+              {JOBS_PER_LOCATION_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-text-primary">
+              <ChevronDownIcon />
+            </span>
           </span>
         </label>
 
