@@ -7,7 +7,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 3 — Find Jobs Page
-**Last completed:** 10 Adzuna Job Discovery (blocked on Adzuna credentials — see below)
+**Last completed:** 10 Adzuna Job Discovery
 **Next:** 11 Filter + Sort + Pagination
 
 ---
@@ -128,10 +128,10 @@ Decisions settled in an `/architect` session and carried into the implementation
 
 ### Feature 10 — Adzuna Job Discovery
 
-**Two blockers that are not code and need the user:**
+**Two environment problems, both found during this feature and both now fixed by the user:**
 
-- **The Adzuna credentials in `.env.local` are rejected.** A bare request with no `category` or `where` still returns `401 AUTH_FAIL`, so this is the key pair itself, not the request shape. `ADZUNA_APP_ID` is 9 alphanumeric characters and `ADZUNA_APP_KEY` is 32, both clean of quotes and whitespace. Adzuna app ids are usually 8. Check or regenerate at developer.adzuna.com. Everything downstream of the search is proven and will work the moment a valid key lands.
-- **PostHog has never fired an event.** `lib/posthog-client.ts` and `lib/posthog-server.ts` both read `NEXT_PUBLIC_POSTHOG_KEY`, matching `build-plan.md` Feature 03, but `.env.local` defines `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`, so both factories return `null`. Settled: rename the variable in `.env.local`; the code is correct. Until then `job_search_started`, `job_found` and `profile_completed` all no-op, and Feature 17's charts will have no history behind them.
+- **The Adzuna credentials in `.env.local` were rejected** — a bare request with no `category` or `where` still returned `401 AUTH_FAIL`, so it was the key pair, not the request shape. The `ADZUNA_APP_ID` was 9 characters where Adzuna issues 8. The corrected pair returns 200. If this recurs, test the credentials directly against `https://api.adzuna.com/v1/api/jobs/gb/search/1` before suspecting the client.
+- **PostHog had never fired an event.** `lib/posthog-client.ts` and `lib/posthog-server.ts` both read `NEXT_PUBLIC_POSTHOG_KEY`, matching `build-plan.md` Feature 03, but `.env.local` defined `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`, so both factories returned `null` and every capture silently no-opped — including `profile_completed` from Feature 06. The variable has been renamed; the code was already correct. Events before this date do not exist, so Feature 17's charts start from here.
 
 **Decisions:**
 
@@ -146,4 +146,6 @@ Decisions settled in an `/architect` session and carried into the implementation
 
 **Files:** `lib/adzuna.ts` (API client, country detection, salary formatting), `agent/matcher.ts` (AI scoring), `agent/adzuna.ts` (orchestration), `agent/types.ts`, `app/api/agent/find/route.ts`, `lib/utils.ts` (`formatRelativeTime`). `components/find-jobs/SearchControls.tsx` became a client component.
 
-**Verified:** 32 assertions through a temporary route in the dev server — country detection across aliases, codes and fallbacks, salary formatting, relative time, and the Zod hardening of match output including score clamping at both ends, reason capping, case-insensitive skill dedupe and non-array rejection. One live scoring call against a synthetic posting returned a grounded 95 with correct matched and missing skills, correctly reading Rust, WebAssembly and Kubernetes as optional. The temporary route was removed. `typecheck`, `lint` and `build` are clean. **Not verified: the live Adzuna search and everything that depends on it — the database writes, the run lifecycle, the PostHog captures and the browser flow.** That is gated on the credentials.
+**Verified in two passes, both through temporary routes in the dev server, both since removed.** First, 32 assertions offline: country detection across aliases, codes and fallbacks, salary formatting, relative time, and the Zod hardening of match output including score clamping at both ends, reason capping, case-insensitive skill dedupe and non-array rejection. Then, once the credentials were fixed, 12 assertions against the live path: a real Adzuna search for "Frontend Engineer" in London returned five postings, all with title, company and redirect URL, and all five scored in 11.8 seconds through the same parallel shape the agent uses. Scores came back differentiated — 86, 82, 78, 78, 72 — with matched and missing skills grounded in each posting, correctly reading domain gaps like crypto trading and construction as missing rather than inventing them. `typecheck`, `lint` and `build` are clean.
+
+**Still unverified: the database writes and the browser flow** — `runJobDiscovery` needs a signed-in session for RLS to permit the `jobs`, `agent_runs` and `agent_logs` writes, so the run lifecycle, the duplicate skip, the PostHog captures and the search button itself have not been exercised. Everything either side of those writes is proven. One logged-in search settles it.
