@@ -48,20 +48,75 @@ const countriesByCity: Record<string, string> = {
   johannesburg: "za", "cape town": "za", pretoria: "za", durban: "za",
 };
 
-// Adzuna has no "remote" location — passing it as `where` matches nothing. These terms describe
-// how the work happens, not where it is, so they are dropped from the location instead.
-const remoteTerms = new Set(["remote", "anywhere", "worldwide", "work from home", "wfh", "hybrid", "fully remote"]);
+// Adzuna has no "remote" location — `where=remote` returns nothing at all. Remote is an
+// arrangement, so it is expressed as a keyword on `what` with no `where` instead.
+const remoteTerms = new Set(["remote", "anywhere", "worldwide", "work from home", "wfh", "fully remote"]);
+
+export const MAX_LOCATIONS = 3;
+
+export type LocationEntry =
+  | { kind: "remote"; label: string; country: string }
+  | { kind: "place"; label: string; country: string };
+
+export type ParsedLocations = { entries: LocationEntry[]; dropped: string[] };
+
+function isCountryQualifier(segment: string): boolean {
+  const value = segment.toLowerCase();
+  // A trailing country name, a supported country code, or a two-letter state abbreviation
+  // qualifies the place before it — "Berlin, Germany" and "Austin, TX" are each one location.
+  return Boolean(countriesByName[value]) || (value.length === 2 && /^[a-z]{2}$/.test(value));
+}
 
 /**
- * Strips terms Adzuna cannot geocode, so "Remote, New York" searches New York and a bare
- * "Remote" searches the whole country rather than returning nothing.
+ * The location field is a list of alternatives: "Remote, New York" means remote roles or New York
+ * roles, so each entry becomes its own Adzuna search. A segment that only qualifies the one before
+ * it — a country or a state — is folded into it rather than treated as another alternative.
  */
-export function normaliseLocation(location: string): string {
-  return location
-    .split(",")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment && !remoteTerms.has(segment.toLowerCase()))
-    .join(", ");
+export function parseLocations(input: string): ParsedLocations {
+  const segments = input.split(",").map((segment) => segment.trim()).filter(Boolean);
+
+  const labels: { kind: "remote" | "place"; label: string }[] = [];
+  for (const segment of segments) {
+    if (remoteTerms.has(segment.toLowerCase())) {
+      labels.push({ kind: "remote", label: segment });
+      continue;
+    }
+
+    const previous = labels.at(-1);
+    if (previous?.kind === "place" && isCountryQualifier(segment)) {
+      previous.label = `${previous.label}, ${segment}`;
+      continue;
+    }
+    labels.push({ kind: "place", label: segment });
+  }
+
+  if (labels.length === 0) {
+    return { entries: [{ kind: "place", label: "", country: "us" }], dropped: [] };
+  }
+
+  const seen = new Set<string>();
+  const unique = labels.filter((entry) => {
+    const key = `${entry.kind}|${entry.label.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const kept = unique.slice(0, MAX_LOCATIONS);
+  // Remote has no country of its own, so it borrows the first named one — someone searching
+  // "Remote, London" almost certainly means UK remote, not US remote.
+  const placeCountry = kept.find((entry) => entry.kind === "place" && entry.label)
+    ? detectCountry(kept.find((entry) => entry.kind === "place" && entry.label)!.label)
+    : "us";
+
+  return {
+    entries: kept.map((entry) => ({
+      kind: entry.kind,
+      label: entry.label,
+      country: entry.kind === "remote" ? placeCountry : detectCountry(entry.label),
+    })),
+    dropped: unique.slice(MAX_LOCATIONS).map((entry) => entry.label),
+  };
 }
 
 export function detectCountry(location: string): string {
@@ -98,8 +153,7 @@ export function formatSalary(job: AdzunaJob): string | null {
 
 export async function searchJobs(
   jobTitle: string,
-  location: string,
-  country: string = "us",
+  entry: LocationEntry,
   resultsPerPage: number = 10,
 ): Promise<AdzunaJob[]> {
   const appId = process.env.ADZUNA_APP_ID;
@@ -110,17 +164,18 @@ export async function searchJobs(
 
   const params = new URLSearchParams({
     app_id: appId,
+    // Remote roles are found by keyword with no `where`; a place uses `where` and no keyword.
     app_key: appKey,
-    what: jobTitle,
+    what: entry.kind === "remote" ? `${jobTitle} remote` : jobTitle,
     category: "it-jobs", // always filter to IT jobs
     results_per_page: String(resultsPerPage),
     "content-type": "application/json",
   });
-  if (location) {
-    params.set("where", location);
+  if (entry.kind === "place" && entry.label) {
+    params.set("where", entry.label);
   }
 
-  const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params}`);
+  const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${entry.country}/search/1?${params}`);
   if (!response.ok) {
     throw new Error(`Adzuna API error: ${response.status}`);
   }

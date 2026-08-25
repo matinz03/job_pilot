@@ -206,3 +206,17 @@ Requested after the real jobs table turned out to hold 58 rows across 20 runs, 1
 - The clear-all label needs the total across every saved job, not the filtered view, so the page runs a separate `head: true` count whenever a run, query or match filter is active.
 - **Files:** `actions/jobs.ts` (`deleteSearchRun`, `deleteAllJobs`), `components/find-jobs/DeleteAction.tsx` (shared confirm behaviour, used by both).
 - **Verified:** `typecheck`, `lint` and `build` are clean, and the pre-delete state was recorded for comparison — 58 jobs, 20 runs, 48 logs, 0 orphaned jobs. **The deletes themselves are unverified**: they need a signed-in session, and running them from here would destroy real data rather than test it. The counts above are the baseline to check against after the first use.
+
+### Feature 10 follow-up — the location field is a list of alternatives
+
+The design's placeholder reads "Remote, New York...". That was built as one location with a noise word stripped out, which searched New York and silently discarded "remote". It means remote roles **or** New York roles. Corrected.
+
+- **Adzuna cannot express "A or B" in one request.** `where` takes a single place, and remote is not a place at all — measured against the live API, `where=remote` returns `count=0`. So each location entry becomes its own search and the results are merged.
+- **Remote is a keyword, not a location.** `what="{title} remote"` with no `where` returned 17 postings whose titles genuinely say Remote; the looser `what_and` returned 3,070 including an AI Engineering Manager role. Precision matters when every result costs a model call.
+- **A trailing country or state qualifies the place before it rather than becoming another alternative.** "Berlin, Germany" and "Austin, TX" are each one location; "Remote, New York" and "London, Toronto" are two. Without that rule, splitting on commas would have turned every qualified place into a bogus second search.
+- **Remote borrows the first named country.** "Remote, London" searches UK remote, not US remote, because someone naming London almost certainly means UK.
+- **Ten results per entry, capped at three entries.** Worst case 30 jobs, about 3 cents and ~35 seconds. Entries beyond the third are dropped and named in a `warning` log rather than silently discarded.
+- **Merged by Adzuna ad id before scoring**, so an ad matching two entries costs one model call. The company-plus-title check against saved jobs still runs on top.
+- One entry failing logs a warning and the rest still run; every entry failing throws, so the run is marked `failed`.
+- **Verified:** 18 assertions, 14 offline over the parser — qualifier folding, duplicate collapse, the three-entry cap and its dropped list, remote country inheritance — plus four live. "Remote, New York" returned 10 genuinely remote postings ("Frontend Software Engineer - Remote", "Remote Frontend Engineer / React / WebGL / 3D") and 10 Manhattan postings, merging to 20. `typecheck`, `lint` and `build` are clean.
+- This replaces `normaliseLocation` from `083b14c`; that entry's description of remote handling no longer reflects the code.

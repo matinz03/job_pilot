@@ -1,4 +1,4 @@
-import { detectCountry, formatSalary, normaliseLocation, searchJobs, type AdzunaJob } from "@/lib/adzuna";
+import { MAX_LOCATIONS, formatSalary, parseLocations, searchJobs, type AdzunaJob } from "@/lib/adzuna";
 import type { createInsforgeServer } from "@/lib/insforge-server";
 import type { ProfileFormValues } from "@/lib/profile";
 import { scoreJob } from "@/agent/matcher";
@@ -94,13 +94,39 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
   const runId = String(run.id);
 
   try {
-    // "Remote" is not a place Adzuna can geocode, and a bare city has to pick a country or the
-    // search runs in the wrong one.
-    const searchLocation = normaliseLocation(location);
-    const country = detectCountry(searchLocation);
-    await log(insforge, { userId, runId, level: "info", message: `Searching ${country.toUpperCase()} for "${jobTitle}"${searchLocation ? ` in ${searchLocation}` : " with no location filter"}.` });
+    // The location field is a list of alternatives, so each entry is its own Adzuna search and
+    // the results are merged. One entry failing does not take the run down with it.
+    const { entries, dropped } = parseLocations(location);
+    if (dropped.length > 0) {
+      await log(insforge, { userId, runId, level: "warning", message: `Only the first ${MAX_LOCATIONS} locations were searched. Ignored: ${dropped.join(", ")}.` });
+    }
 
-    const results = await searchJobs(jobTitle, searchLocation, country, RESULTS_PER_PAGE);
+    const searches = await Promise.all(entries.map(async (entry) => {
+      const where = entry.kind === "remote" ? "remote roles" : entry.label || "any location";
+      try {
+        const jobs = await searchJobs(jobTitle, entry, RESULTS_PER_PAGE);
+        await log(insforge, { userId, runId, level: "info", message: `Searched ${entry.country.toUpperCase()} for "${jobTitle}" — ${where}: ${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}.` });
+        return { jobs, failed: false };
+      } catch (error) {
+        console.error("[agent/adzuna] search", where, error);
+        await log(insforge, { userId, runId, level: "warning", message: `Could not search ${where}. The other locations were still searched.` });
+        return { jobs: [] as AdzunaJob[], failed: true };
+      }
+    }));
+
+    if (searches.every((search) => search.failed)) {
+      throw new Error("Could not reach the job search service. Please try again.");
+    }
+
+    // An ad matching two locations is one job, so it is merged before anything is scored.
+    const byAdId = new Map<string, AdzunaJob>();
+    for (const search of searches) {
+      for (const job of search.jobs) {
+        const key = String(job.id ?? job.redirect_url ?? `${job.company?.display_name}|${job.title}`);
+        if (!byAdId.has(key)) byAdId.set(key, job);
+      }
+    }
+    const results = [...byAdId.values()];
 
     // Only the companies in this batch are looked up, rather than every job ever saved. A whole
     // table read is both wasteful and capped by the API's default page size, which silently
