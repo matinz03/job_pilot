@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       }
 
       revalidatePath("/find-jobs");
+      revalidatePath("/dashboard");
       return NextResponse.json({
         success: true,
         data: {

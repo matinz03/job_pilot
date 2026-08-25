@@ -344,3 +344,43 @@ Other radii belong to things that are not controls, and each has a reason:
 | `rounded-sm` | the profile page's uppercase field chips |
 
 When adding a control, do not reach for a larger radius to make it feel softer — size, weight and colour carry emphasis, radius does not.
+
+## Company Research Dossier
+
+File: `components/job-details/CompanyResearch.tsx`
+
+Last updated: 2026-08-25
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-surface`; strategy panels use `bg-success-light` / `bg-accent-light` |
+| Border | `border border-border`; strategy panels use semantic low-contrast borders |
+| Border radius | `rounded-2xl` card, `rounded-xl` strategy panels, `rounded-md` action |
+| Text — primary | `text-text-primary`, `text-text-dark` |
+| Text — secondary | `text-text-secondary`, `text-text-muted` |
+| Spacing | `p-6 sm:p-8`, `space-y-6`, `gap-5` /
+| Hover state | accent action uses lift, darkens, and `shadow-button-hover` |
+| Shadow | `shadow-card` card, `shadow-button` action |
+| Accent usage | `bg-accent` action; accent strategy panel and source links |
+
+**Pattern notes:** The Company Research card keeps the Job Details section-card surface. While research runs, its action label becomes `Researching...` and the control disables. A `bg-surface-secondary` progress surface below the header lists real server-reported stages; completed stages use `text-success-dark bg-success`, current uses `text-accent bg-accent`, and waiting stages use muted text and `bg-border`. Dossier sections use uppercase muted labels, neutral skill pills, and semantic `rounded-xl` strategy panels for Your Edge and Gaps to Address. Source links always open externally with `rel="noopener noreferrer"`.
+
+## Dashboard Overview
+
+Files: `app/dashboard/page.tsx`, `components/dashboard/DashboardCharts.tsx`, `components/layout/Navbar.tsx`
+
+Last updated: 2026-08-26
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-background` page; `bg-surface` cards |
+| Border | `border border-border` cards; `border-l border-border` activity timeline |
+| Border radius | `rounded-2xl` cards; `rounded-full` timeline markers |
+| Text — primary | `text-text-primary` for headings, values, and activity titles |
+| Text — secondary | `text-text-secondary` subtitles and labels; `text-text-muted` supporting copy and chart axes |
+| Spacing | `py-10`, `mt-8` sections, `gap-6` grids, `p-6` cards |
+| Hover state | Navbar links use `hover:text-accent`; static dashboard cards have none |
+| Shadow | `shadow-card` cards |
+| Accent usage | `text-accent` active navigation; `text-success-dark` and `text-error` live trends; semantic accent, info, and success markers; charts read CSS token variables |
+
+**Pattern notes:** The dashboard is a desktop-first analytics overview inside the standard 1440px frame. Summary metrics remain four equal `rounded-2xl` cards; data areas use the same card treatment, with Recharts isolated in a client component and colored only through design-token CSS variables. Live card trends use success for gains, error for declines, and muted copy for no baseline, no change, or no scores; never preserve a decorative positive trend when data says otherwise. The shared Navbar is 80px high and uses a 16px outline icon plus label for each desktop link; keep its active bottom border and icon state together across every authenticated route.

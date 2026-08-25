@@ -8,6 +8,7 @@ import { JobInfo } from "@/components/job-details/JobInfo";
 import { MatchScore } from "@/components/job-details/MatchScore";
 import { ChevronLeftIcon } from "@/components/job-details/icons";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { companyResearchSchema, type CompanyResearchDossier } from "@/lib/company-research";
 import { formatRelativeTime } from "@/lib/utils";
 
 type JobDetailsRow = {
@@ -24,6 +25,7 @@ type JobDetailsRow = {
   missing_skills: string[] | null;
   source_url: string | null;
   external_apply_url: string | null;
+  company_research: unknown;
   found_at: string | null;
 };
 
@@ -48,7 +50,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
   const { data: row, error: jobError } = await insforge.database
     .from("jobs")
-    .select("id, title, company, location, salary, job_type, about_role, match_score, match_reason, matched_skills, missing_skills, source_url, external_apply_url, found_at")
+    .select("id, title, company, location, salary, job_type, about_role, match_score, match_reason, matched_skills, missing_skills, source_url, external_apply_url, company_research, found_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -64,6 +66,8 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
   const company = job.company ?? "Unknown company";
   const applyUrl = job.external_apply_url ?? job.source_url ?? "";
+  const parsedResearch = companyResearchSchema.safeParse(job.company_research);
+  const dossier: CompanyResearchDossier | null = parsedResearch.success ? parsedResearch.data : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,7 +101,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
             <JobDescription description={job.about_role ?? ""} />
 
-            <CompanyResearch company={company} />
+            <CompanyResearch company={company} dossier={dossier} jobId={job.id} />
 
             <ApplyNowButton applyUrl={applyUrl} company={company} />
           </div>

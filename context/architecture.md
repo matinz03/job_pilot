@@ -346,7 +346,6 @@ export const createInsforgeServer = async () => {
 ```typescript
 // Company research session — single session, sequential page visits
 const session = await bb.sessions.create({
-  projectId: process.env.BROWSERBASE_PROJECT_ID!,
   timeout: 120, // 2 minute session — visits 3-4 pages max
 });
 ```
@@ -380,11 +379,9 @@ const data = await response.json();
 
 ```typescript
 // Single session — visits company homepage and sub pages sequentially
-const stagehand = new Stagehand({
+const stagehand = await Stagehand.create({
   env: "BROWSERBASE",
   apiKey: process.env.BROWSERBASE_API_KEY!,
-  projectId: process.env.BROWSERBASE_PROJECT_ID!,
-  browserbaseSessionID: session.id,
   modelName: AI_MODEL,
   modelClientOptions: {
     apiKey: process.env.LLM_API_KEY!,

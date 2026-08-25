@@ -245,8 +245,7 @@ All environment variables defined in `.env.local` for development. Never hardcod
 | ------------------------------- | ---------------------- |
 | `NEXT_PUBLIC_INSFORGE_URL`      | lib/insforge-client.ts |
 | `NEXT_PUBLIC_INSFORGE_ANON_KEY` | lib/insforge-client.ts |
-| `BROWSERBASE_API_KEY`           | lib/browserbase.ts     |
-| `BROWSERBASE_PROJECT_ID`        | lib/browserbase.ts     |
+| `BROWSERBASE_API_KEY`           | lib/stagehand.ts       |
 | `LLM_API_KEY`                   | lib/ai.ts              |
 | `LLM_API_URL`                   | lib/ai.ts              |
 | `LLM_MODEL`                     | lib/ai.ts              |

@@ -266,7 +266,6 @@ const bb = new Browserbase({ apiKey: process.env.BROWSERBASE_API_KEY! });
 
 // Single session for company research — sequential page visits
 const session = await bb.sessions.create({
-  projectId: process.env.BROWSERBASE_PROJECT_ID!,
   timeout: 120, // 2 minute session — visits 3-4 pages max
 });
 ```
@@ -279,7 +278,7 @@ Browserbase sessions run on Browserbase's cloud infrastructure, not inside your 
 - Always use single sessions — never parallel sessions (free plan limit)
 - Session timeout is 120 seconds — sufficient for 3-4 page visits
 - Always end sessions cleanly — call stagehand.close() when done
-- Project ID always from `process.env.BROWSERBASE_PROJECT_ID` — never hardcode
+- Browserbase access uses `BROWSERBASE_API_KEY` only — never add a project id
 - Browserbase client lives in `lib/browserbase.ts` — always import from there
 
 ---
@@ -293,11 +292,9 @@ Browserbase sessions run on Browserbase's cloud infrastructure, not inside your 
 ```typescript
 import { Stagehand } from "@browserbasehq/stagehand";
 
-const stagehand = new Stagehand({
+const stagehand = await Stagehand.create({
   env: "BROWSERBASE",
   apiKey: process.env.BROWSERBASE_API_KEY!,
-  projectId: process.env.BROWSERBASE_PROJECT_ID!,
-  browserbaseSessionID: session.id,
   model: { modelName: AI_MODEL, apiKey: process.env.LLM_API_KEY!, baseURL: process.env.LLM_API_URL! },
   disablePino: true,
 });
