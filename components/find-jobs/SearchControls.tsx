@@ -76,7 +76,7 @@ export function SearchControls() {
         <label className="block">
           <span className={labelClassName}>Location</span>
           <span className="relative mt-2 block">
-            <input className={`${inputClassName} pl-4`} disabled={isSearching} name="location" placeholder="Remote, New York..." type="text" />
+            <input className={`${inputClassName} pl-4`} disabled={isSearching} name="location" placeholder="Remote, Berlin, Germany..." type="text" />
           </span>
         </label>
 

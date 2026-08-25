@@ -54,68 +54,122 @@ const remoteTerms = new Set(["remote", "anywhere", "worldwide", "work from home"
 
 export const MAX_LOCATIONS = 3;
 
-export type LocationEntry =
-  | { kind: "remote"; label: string; country: string }
-  | { kind: "place"; label: string; country: string };
+/**
+ * Adzuna needs a different request for each kind of location:
+ * - `remote`  — a keyword on `what`, no `where`. `where=remote` returns nothing.
+ * - `country` — the country endpoint with no `where`. `where=Germany` on /de also returns nothing.
+ * - `place`   — `where` set to the city, on that city's country endpoint.
+ */
+export type LocationEntry = {
+  kind: "remote" | "country" | "place";
+  label: string;
+  where: string;
+  country: string;
+};
 
 export type ParsedLocations = { entries: LocationEntry[]; dropped: string[] };
 
-function isCountryQualifier(segment: string): boolean {
-  const value = segment.toLowerCase();
-  // A trailing country name, a supported country code, or a two-letter state abbreviation
-  // qualifies the place before it — "Berlin, Germany" and "Austin, TX" are each one location.
-  return Boolean(countriesByName[value]) || (value.length === 2 && /^[a-z]{2}$/.test(value));
+type Draft =
+  | { kind: "remote"; label: string }
+  | { kind: "country"; label: string; country: string }
+  | { kind: "place"; label: string; where: string; country: string | null; qualified: boolean };
+
+function countryCodeFor(segment: string): string | null {
+  const value = segment.trim().toLowerCase();
+  if (countriesByName[value]) return countriesByName[value];
+  if (value.length === 2 && supportedCountryCodes.has(value)) return value;
+  return null;
 }
 
 /**
- * The location field is a list of alternatives: "Remote, New York" means remote roles or New York
- * roles, so each entry becomes its own Adzuna search. A segment that only qualifies the one before
- * it — a country or a state — is folded into it rather than treated as another alternative.
+ * The location field is a list of alternatives — "Remote, Berlin, France" is three searches. A
+ * country or a state qualifies the city before it rather than becoming another alternative, so
+ * "Berlin, Germany" stays one location, but "France, Germany" is two countries because the
+ * segment before is itself a country, not a city.
  */
 export function parseLocations(input: string): ParsedLocations {
-  const segments = input.split(",").map((segment) => segment.trim()).filter(Boolean);
+  const drafts: Draft[] = [];
 
-  const labels: { kind: "remote" | "place"; label: string }[] = [];
-  for (const segment of segments) {
+  for (const segment of input.split(",").map((part) => part.trim()).filter(Boolean)) {
     if (remoteTerms.has(segment.toLowerCase())) {
-      labels.push({ kind: "remote", label: segment });
+      drafts.push({ kind: "remote", label: segment });
       continue;
     }
 
-    const previous = labels.at(-1);
-    if (previous?.kind === "place" && isCountryQualifier(segment)) {
-      previous.label = `${previous.label}, ${segment}`;
+    const code = countryCodeFor(segment);
+    const previous = drafts.at(-1);
+    // A country folds into the city before it only when it does not contradict what we already
+    // know: "Berlin, Germany" is one location, but "Berlin, France" is two, because Berlin is a
+    // known German city and France therefore has to be a separate alternative. An unknown city
+    // trusts the qualifier. One qualifier per city, so "Berlin, Germany, France" is two entries.
+    const qualifiesPreviousCity = previous?.kind === "place"
+      && !previous.qualified
+      && (previous.country === null || previous.country === code);
+
+    if (code) {
+      if (qualifiesPreviousCity) {
+        previous.label = `${previous.label}, ${segment}`;
+        previous.country = code;
+        previous.qualified = true;
+        continue;
+      }
+      drafts.push({ kind: "country", label: segment, country: code });
       continue;
     }
-    labels.push({ kind: "place", label: segment });
+
+    // A two-letter segment that is not a country reads as a state or province: "Austin, TX".
+    if (/^[a-z]{2}$/i.test(segment) && previous?.kind === "place" && !previous.qualified) {
+      previous.label = `${previous.label}, ${segment}`;
+      previous.where = `${previous.where}, ${segment}`;
+      previous.qualified = true;
+      continue;
+    }
+
+    drafts.push({
+      kind: "place",
+      label: segment,
+      where: segment,
+      country: countriesByCity[segment.toLowerCase()] ?? null,
+      qualified: false,
+    });
   }
 
-  if (labels.length === 0) {
-    return { entries: [{ kind: "place", label: "", country: "us" }], dropped: [] };
+  if (drafts.length === 0) {
+    return { entries: [{ kind: "country", label: "", where: "", country: "us" }], dropped: [] };
   }
 
   const seen = new Set<string>();
-  const unique = labels.filter((entry) => {
-    const key = `${entry.kind}|${entry.label.toLowerCase()}`;
+  const unique = drafts.filter((draft) => {
+    const key = `${draft.kind}|${draft.label.toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 
   const kept = unique.slice(0, MAX_LOCATIONS);
-  // Remote has no country of its own, so it borrows the first named one — someone searching
-  // "Remote, London" almost certainly means UK remote, not US remote.
-  const placeCountry = kept.find((entry) => entry.kind === "place" && entry.label)
-    ? detectCountry(kept.find((entry) => entry.kind === "place" && entry.label)!.label)
+  // Remote has no country of its own, so it borrows the first one named. "Remote, London" means
+  // UK remote to anyone who typed it.
+  const named = kept.find((draft) => draft.kind === "country" || (draft.kind === "place" && draft.country));
+  const remoteCountry = named
+    ? (named.kind === "country" ? named.country : (named as Extract<Draft, { kind: "place" }>).country ?? "us")
     : "us";
 
   return {
-    entries: kept.map((entry) => ({
-      kind: entry.kind,
-      label: entry.label,
-      country: entry.kind === "remote" ? placeCountry : detectCountry(entry.label),
-    })),
-    dropped: unique.slice(MAX_LOCATIONS).map((entry) => entry.label),
+    entries: kept.map((draft) => {
+      if (draft.kind === "remote") {
+        return { kind: "remote" as const, label: draft.label, where: "", country: remoteCountry };
+      }
+      if (draft.kind === "country") {
+        return { kind: "country" as const, label: draft.label, where: "", country: draft.country };
+      }
+      return {
+        kind: "place" as const,
+        label: draft.label,
+        where: draft.where,
+        country: draft.country ?? "us",
+      };
+    }),
+    dropped: unique.slice(MAX_LOCATIONS).map((draft) => draft.label),
   };
 }
 
@@ -171,8 +225,9 @@ export async function searchJobs(
     results_per_page: String(resultsPerPage),
     "content-type": "application/json",
   });
-  if (entry.kind === "place" && entry.label) {
-    params.set("where", entry.label);
+  // Only a city gets a `where`. A country is the endpoint itself, and remote is a keyword.
+  if (entry.where) {
+    params.set("where", entry.where);
   }
 
   const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${entry.country}/search/1?${params}`);

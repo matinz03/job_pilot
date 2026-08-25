@@ -231,3 +231,25 @@ A checkup after the first real clear-all found a run that took 2m16s against a r
 - **Banner copy.** "Found 10 jobs and saved 0 strong matches." read as though nothing had been saved, when in fact all ten were. The saved count now leads and the strong count qualifies it: "Found 10 jobs and saved 10, though none scored 70 or above." All seven branches were checked, including the singular case that first read "1 of them strong match" and now reads "including 1 strong match".
 - **A Location column was added to the jobs table**, at the user's request. It matters more now that one search can span several locations — without it a remote result and a New York result are indistinguishable in the list. Six columns rather than the design's five; Company and Role gave up the width, since they were widest to begin with. `jobs.location` was already populated from Adzuna, so no migration.
 - **Verified:** the three concurrency measurements against the live gateway, all seven copy branches, and clean `typecheck`, `lint` and `build`. The pool and the new copy have not been exercised through a real signed-in search yet.
+
+### Feature 10 follow-up — cities, countries and remote in one field
+
+Typing a bare country returned nothing. Measured against the live API: `where=Germany` on the `/de` endpoint gives `count=0`, while the same endpoint with no `where` gives 185. So there are **three** request shapes, not two:
+
+| Kind | Request |
+| --- | --- |
+| remote | keyword on `what`, no `where` (`where=remote` returns 0) |
+| country | that country's endpoint, no `where` |
+| city | `where` set to the city, on its country's endpoint |
+
+`LocationEntry` now carries `kind`, `label`, `where` and `country`, and `searchJobs` sets `where` only when there is one.
+
+**The folding rule took three passes to get right, and the failures were the useful part:**
+
+- First attempt folded any country onto the previous segment. "France, Germany" collapsed into one search instead of two, because it only asked "is this a country" and not "is the thing before it also a country".
+- Second attempt only folded onto a city with no country of its own. That broke "Berlin, Germany" — Berlin already resolves to `de` through the city lookup, so the qualifier was refused and it became two searches.
+- The rule that holds: **a country folds into the city before it only when it does not contradict what is already known.** `Berlin, Germany` folds because they agree; `Berlin, France` does not, because Berlin is a known German city and France therefore has to be a separate alternative; `Springfield, France` folds, because an unknown city trusts the qualifier. One qualifier per city, so `Berlin, Germany, France` is Berlin-in-Germany plus France.
+
+- **Verified:** 20 assertions — 16 offline over every parse shape including the three folding cases above, and four live confirming that every entry of "Germany", "Berlin, Germany", "France, Germany" and "Remote, Berlin" returns real jobs. `typecheck`, `lint` and `build` are clean.
+- The Location placeholder now reads "Remote, Berlin, Germany..." so the field teaches what it accepts.
+- Still capped at three locations, ten results each, scored five at a time.

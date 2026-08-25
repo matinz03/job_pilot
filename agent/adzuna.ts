@@ -128,7 +128,11 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
     }
 
     const searches = await Promise.all(entries.map(async (entry) => {
-      const where = entry.kind === "remote" ? "remote roles" : entry.label || "any location";
+      const where = entry.kind === "remote"
+        ? "remote roles"
+        : entry.kind === "country"
+          ? `${entry.label || entry.country.toUpperCase()} country-wide`
+          : entry.label;
       try {
         const jobs = await searchJobs(jobTitle, entry, RESULTS_PER_PAGE);
         await log(insforge, { userId, runId, level: "info", message: `Searched ${entry.country.toUpperCase()} for "${jobTitle}" — ${where}: ${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}.` });
