@@ -180,3 +180,16 @@ Reported from real use: searching for something new added to the list instead of
 - A scoped run that saved nothing new gets its own empty message rather than the generic one, since "no jobs yet" would be wrong when the user has plenty.
 - **Default sort stays match score.** Within a single run, best matches first is right; the recency problem was a symptom of the mixed list, not of the sort.
 - **Verified:** 12 assertions through a temporary route, since removed — uuid validation including an injection attempt, href serialisation and round-tripping, run persistence across filter changes, and the three empty-state branches. `typecheck`, `lint` and `build` are clean. The scoped query itself is still unverified against real rows.
+
+### Feature 10 follow-up — two bugs found by querying the real data
+
+Both surfaced from a question about whether the match scores were real. They are: 58 rows, all scored by live model calls. Reading those rows exposed two defects.
+
+**1. The duplicate skip only worked part of the time.** 10 duplicated company-plus-title pairs, including one Adzuna ad saved three times across three runs and scored 35, 38 and 42. The skip was running — `agent_logs` shows "Skipped 10 jobs already in your list" with no errors — so it was catching some and missing others. Cause: the lookup read *every* job the user had ever saved with a bare `.select()`, and once the list outgrew the API's default page size the comparison only saw a slice of it. Fixed by looking up only the companies in the current batch with `.in("company", companies)`, which is bounded by the ten results rather than by the size of the table. A failed lookup now also writes a `warning` to `agent_logs` instead of silently disabling the check — the old code logged to the console and carried on as if nothing was saved.
+
+**2. Every search with a location returned zero jobs.** Runs for `london` and `remote` all recorded `jobs_found = 0` while the same searches with no location returned 10. Two causes: `detectCountry` only knew country names, so "london" fell through to `us` and searched the United States for a place called London; and "remote" is not a place Adzuna can geocode at all, so it matched nothing. Fixed with a city-to-country lookup covering the major non-US cities, plus `normaliseLocation`, which strips terms that describe how the work happens rather than where it is — remote, hybrid, wfh, anywhere. "Remote, New York" now searches New York; a bare "Remote" searches the whole country.
+
+- A named country still beats a city, so "London, Canada" searches `ca` rather than `gb`.
+- US cities need no entries, since `us` is the fallback.
+- **Verified live:** 18 assertions, 16 offline plus two real Adzuna calls. "Backend Engineer" in London now returns five genuine London postings (SeedLegals, Gold Group in Farringdon and Central London) where it previously returned none, and "remote" returns five. `typecheck`, `lint` and `build` are clean.
+- **The dedupe fix itself is unverified against real rows** — it needs a signed-in search to exercise. The 10 existing duplicate pairs are still in the database; they predate the fix and would need a cleanup query to remove.

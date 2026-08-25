@@ -1,4 +1,4 @@
-import { detectCountry, formatSalary, searchJobs, type AdzunaJob } from "@/lib/adzuna";
+import { detectCountry, formatSalary, normaliseLocation, searchJobs, type AdzunaJob } from "@/lib/adzuna";
 import type { createInsforgeServer } from "@/lib/insforge-server";
 import type { ProfileFormValues } from "@/lib/profile";
 import { scoreJob } from "@/agent/matcher";
@@ -94,17 +94,30 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
   const runId = String(run.id);
 
   try {
-    const country = detectCountry(location);
-    await log(insforge, { userId, runId, level: "info", message: `Searching ${country.toUpperCase()} for "${jobTitle}"${location ? ` in ${location}` : ""}.` });
+    // "Remote" is not a place Adzuna can geocode, and a bare city has to pick a country or the
+    // search runs in the wrong one.
+    const searchLocation = normaliseLocation(location);
+    const country = detectCountry(searchLocation);
+    await log(insforge, { userId, runId, level: "info", message: `Searching ${country.toUpperCase()} for "${jobTitle}"${searchLocation ? ` in ${searchLocation}` : " with no location filter"}.` });
 
-    const results = await searchJobs(jobTitle, location, country, RESULTS_PER_PAGE);
+    const results = await searchJobs(jobTitle, searchLocation, country, RESULTS_PER_PAGE);
 
-    const { data: existing, error: existingError } = await insforge.database
-      .from("jobs")
-      .select("company, title")
-      .eq("user_id", userId);
+    // Only the companies in this batch are looked up, rather than every job ever saved. A whole
+    // table read is both wasteful and capped by the API's default page size, which silently
+    // shrank what the duplicate check could see once the list grew.
+    const companies = [...new Set(results.map((job) => (job.company?.display_name ?? "").trim()).filter(Boolean))];
+    const { data: existing, error: existingError } = companies.length > 0
+      ? await insforge.database
+        .from("jobs")
+        .select("company, title")
+        .eq("user_id", userId)
+        .in("company", companies)
+      : { data: [], error: null };
+
     if (existingError) {
+      // A failed lookup means duplicates get through, so say so rather than failing quietly.
       console.error("[agent/adzuna] existing jobs", existingError);
+      await log(insforge, { userId, runId, level: "warning", message: "Could not check which jobs you already have, so this search may have saved duplicates." });
     }
 
     const seen = new Set(

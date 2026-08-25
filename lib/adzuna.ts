@@ -24,6 +24,46 @@ const countriesByName: Record<string, string> = {
 
 const supportedCountryCodes = new Set(Object.values(countriesByName));
 
+// Adzuna searches one country at a time, so a bare city has to resolve to one or the search
+// runs in the wrong country and finds nothing. US cities need no entry — 'us' is the fallback.
+const countriesByCity: Record<string, string> = {
+  london: "gb", manchester: "gb", birmingham: "gb", leeds: "gb", glasgow: "gb", edinburgh: "gb",
+  bristol: "gb", liverpool: "gb", cambridge: "gb", oxford: "gb", cardiff: "gb", belfast: "gb",
+  dublin: "ie", cork: "ie",
+  toronto: "ca", vancouver: "ca", montreal: "ca", ottawa: "ca", calgary: "ca",
+  sydney: "au", melbourne: "au", brisbane: "au", perth: "au", canberra: "au",
+  auckland: "nz", wellington: "nz",
+  berlin: "de", munich: "de", "münchen": "de", hamburg: "de", frankfurt: "de", cologne: "de", "köln": "de", stuttgart: "de",
+  vienna: "at", wien: "at", zurich: "ch", "zürich": "ch", geneva: "ch", basel: "ch",
+  paris: "fr", lyon: "fr", marseille: "fr", toulouse: "fr", bordeaux: "fr", lille: "fr",
+  madrid: "es", barcelona: "es", valencia: "es", seville: "es", "sevilla": "es",
+  rome: "it", roma: "it", milan: "it", milano: "it", turin: "it", naples: "it",
+  amsterdam: "nl", rotterdam: "nl", "the hague": "nl", utrecht: "nl", eindhoven: "nl",
+  brussels: "be", antwerp: "be", ghent: "be",
+  warsaw: "pl", krakow: "pl", "kraków": "pl", wroclaw: "pl", gdansk: "pl",
+  "são paulo": "br", "sao paulo": "br", rio: "br", "rio de janeiro": "br",
+  "mexico city": "mx", guadalajara: "mx", monterrey: "mx",
+  bangalore: "in", bengaluru: "in", mumbai: "in", delhi: "in", "new delhi": "in", hyderabad: "in", pune: "in", chennai: "in",
+  singapore: "sg",
+  johannesburg: "za", "cape town": "za", pretoria: "za", durban: "za",
+};
+
+// Adzuna has no "remote" location — passing it as `where` matches nothing. These terms describe
+// how the work happens, not where it is, so they are dropped from the location instead.
+const remoteTerms = new Set(["remote", "anywhere", "worldwide", "work from home", "wfh", "hybrid", "fully remote"]);
+
+/**
+ * Strips terms Adzuna cannot geocode, so "Remote, New York" searches New York and a bare
+ * "Remote" searches the whole country rather than returning nothing.
+ */
+export function normaliseLocation(location: string): string {
+  return location
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment && !remoteTerms.has(segment.toLowerCase()))
+    .join(", ");
+}
+
 export function detectCountry(location: string): string {
   const input = location.trim().toLowerCase();
   if (!input) return "us";
@@ -35,8 +75,16 @@ export function detectCountry(location: string): string {
     if (segment.length === 2 && supportedCountryCodes.has(segment)) return segment;
   }
 
-  const match = Object.keys(countriesByName).find((name) => input.includes(name));
-  return match ? countriesByName[match] : "us";
+  // No country named, so fall back to the city — "London" has to mean gb, not a US search.
+  for (const segment of segments) {
+    if (countriesByCity[segment]) return countriesByCity[segment];
+  }
+
+  const country = Object.keys(countriesByName).find((name) => input.includes(name));
+  if (country) return countriesByName[country];
+
+  const city = Object.keys(countriesByCity).find((name) => input.includes(name));
+  return city ? countriesByCity[city] : "us";
 }
 
 export function formatSalary(job: AdzunaJob): string | null {
