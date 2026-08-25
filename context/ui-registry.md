@@ -258,4 +258,71 @@ Skill pills are `rounded-full px-3 py-1.5 text-sm font-medium` with a leading ic
 
 Info cards are a four-column grid of `rounded-xl border border-border bg-surface p-5 shadow-card`, each pairing a tinted icon tile with a `text-base font-semibold` value above a `text-xs uppercase text-text-muted` label. Values truncate rather than wrap.
 
+The `Research Company` action is `rounded-full bg-accent px-5 py-2.5` — **the only action button in the project using a pill radius**, taken from the design. Every other action is `rounded-md` or `rounded-lg`. Treat it as a known deviation rather than a pattern to copy; if it is reconciled later, it becomes `rounded-md`. It renders disabled until the research agent exists, with a `title` explaining why.
+
 Empty state for research: a `rounded-full bg-surface-secondary` icon circle, a `text-base font-medium` line, and muted explanatory copy capped at 360px, sitting under a `border-t border-border` divider inside the same card as its heading and action.
+
+### Destructive Action
+
+File: `components/find-jobs/DeleteAction.tsx`
+Last updated: 2026-08-25
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-surface` idle; `bg-error` on the confirm step |
+| Border | `border border-error/40` prominent; `border border-border` on cancel; none on quiet |
+| Border radius | `rounded-md` |
+| Text — primary | `text-error` idle, `text-error-foreground` on confirm, `text-text-dark` on cancel |
+| Text — secondary | `text-text-secondary` quiet variant, `text-text-dark` on the confirm question |
+| Spacing | `px-4 py-2` prominent and confirm; `px-2 py-1` quiet; `gap-3` between confirm controls; `gap-2` above the error line |
+| Hover state | `hover:bg-error/5` prominent; `hover:text-error` quiet; `hover:bg-surface-secondary` cancel; `hover:opacity-90` confirm |
+| Shadow | none |
+| Accent usage | none — destructive actions use the error token only |
+
+**Pattern notes:** The shared confirm-before-delete pattern. **Any new destructive action should use this component rather than rolling its own confirm.** Two tones: `button` for a delete sitting beside the thing it removes, and `quiet` — underlined `text-text-secondary`, no border — for one whose blast radius is large enough that it should not compete with routine controls.
+
+The first click never deletes. It swaps the control for a question naming the exact count — "Delete 58 jobs? This cannot be undone." — plus cancel and delete. **The count is the point of the confirm**; a confirm that does not state the blast radius is decoration. While the action is in flight the confirm label becomes `Deleting...` and both controls disable, matching the in-button progress used by the profile and search cards. Errors render as a `text-sm font-medium text-error` line with `role="alert"` under the controls, never replacing them, so a retry is always one click away.
+
+Deliberately no browser `confirm()` and no undo window: a dialog is a different pattern for the same job, and an undo window would need rows held pending for a list the user can rebuild by searching again.
+
+### Run Scope Notice
+
+File: `components/find-jobs/RunScopeNotice.tsx`
+Last updated: 2026-08-25
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-surface-secondary` |
+| Border | `border border-accent/30` |
+| Border radius | `rounded-2xl` |
+| Text — primary | `font-semibold text-text-primary` for the count and the search terms |
+| Text — secondary | `text-sm text-text-dark` |
+| Spacing | `px-5 py-4`, `gap-3` |
+| Hover state | on its actions only — `hover:bg-surface-secondary` |
+| Shadow | none |
+| Accent usage | `border-accent/30` |
+
+**Pattern notes:** The banner shown when the list is filtered to one search run. Same accent-bordered surface as the profile page's extraction review panel — use that pairing (`border-accent/30` on `bg-surface-secondary`, no shadow) for any panel explaining *why the view is not showing everything*. It is a lighter weight than a full card on purpose: it annotates the list rather than being a section of it.
+
+It always states three things — how many, what was searched, and that other saved jobs are hidden — then offers the way out. Never let it claim a filtered view without naming the escape.
+
+### Job Actions
+
+File: `components/job-details/JobActions.tsx`
+Last updated: 2026-08-25
+
+| Property | Class |
+| --- | --- |
+| Background | `bg-surface` secondary; `bg-accent` primary |
+| Border | `border border-border` secondary; none on primary |
+| Border radius | `rounded-lg` secondary; `rounded-xl` primary |
+| Text — primary | `text-text-dark` secondary; `text-accent-foreground` primary |
+| Text — secondary | none |
+| Spacing | `px-5 py-3` secondary; `px-6 py-4` primary |
+| Hover state | `hover:bg-surface-secondary` secondary; `hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover` primary |
+| Shadow | `shadow-button` on both |
+| Accent usage | `bg-accent` on the primary apply action |
+
+**Pattern notes:** Two outward links to the same destination at two weights. `View Job Post` is a compact secondary action inside the header card; `Apply Now at {company}` is a full-width primary at the foot of the page, the heaviest control on it, and the only place the apply URL is named after the employer.
+
+Both fall back from `external_apply_url` to `source_url` and **render nothing at all when neither exists** — an apply button that goes nowhere is worse than no button. Both carry `target="_blank"` with `rel="noopener noreferrer"`.
