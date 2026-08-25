@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CompanyIcon } from "@/components/find-jobs/icons";
+import { matchBarClassName } from "@/lib/match-score";
 import type { JobListItem } from "@/types";
 
 type JobsTableProps = { jobs: JobListItem[]; emptyMessage: string };
@@ -10,18 +11,11 @@ const headerCellClassName = "px-6 py-4 text-left text-xs font-medium uppercase t
 // since they are the two that were widest to begin with.
 const columnWidths = ["w-[19%]", "w-[24%]", "w-[16%]", "w-[15%]", "w-[14%]", "w-[12%]"] as const;
 
-// The design bands the bar by score: green from 90, blue from 80, orange below.
-function scoreClassName(score: number): string {
-  if (score >= 90) return "bg-success";
-  if (score >= 80) return "bg-info";
-  return "bg-warning";
-}
-
 function MatchScore({ score }: { score: number }) {
   return (
     <span className="flex items-center gap-3">
       <span aria-hidden="true" className="block h-1.5 w-24 overflow-hidden rounded-full bg-border">
-        <span className={`block h-full rounded-full ${scoreClassName(score)}`} style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />
+        <span className={`block h-full rounded-full ${matchBarClassName(score)}`} style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />
       </span>
       <span className="text-sm font-semibold text-text-primary">{score}%</span>
     </span>

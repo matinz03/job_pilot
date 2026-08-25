@@ -164,13 +164,15 @@ border-radius: 9999px
 background track: #E7EAF3
 ```
 
-Fill color by score — bands taken from `find-jobs.png`:
+Fill color by score:
 
-- 90-100%: `#10B981` (green)
-- 80-89%: `#61A8FF` (blue)
-- Below 80%: `#FF8904` (orange)
+- 88-100%: `var(--color-success)` (green) plus `shadow-success-glow`
+- 70-87%: `var(--color-info)` (blue)
+- Below 70%: `var(--color-warning)` (orange)
 
-These bands are deliberately not the same as Feature 11's High Match filter (`>= 70`). Bar colour answers "how strong is this match"; the filter answers "is this worth your time". Do not reconcile one to the other.
+The 70 boundary is the same threshold Feature 11's High Match filter uses, so an orange bar reads as "below High Match" without needing the filter. Only the top band glows; the glow is a `--shadow-success-glow` token, never an inline colour.
+
+The job details match badge uses these same bands in their `-light` surfaces, so one score never reads as two different strengths in two places.
 
 ---
 

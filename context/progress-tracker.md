@@ -278,3 +278,26 @@ Built to `context/designs/job-details.png`. Every section reads real data from `
 - Apply Now and View Job Post both fall back from `external_apply_url` to `source_url`, and render nothing at all if neither exists, so there is never a dead link.
 - **Verified** through a temporary unauthenticated copy measured in the browser, since the real page needs a session: five sections all 880px and centred, four info cards in one row at 208px each, the apply button full width at 56px, the research button disabled, and no horizontal overflow at 1265px. The temporary page was removed. `typecheck`, `lint` and `build` are clean, and `/find-jobs/[id]` is registered.
 - **Not verified:** the page against a real job row. The query is scoped and typed but has not run with a session.
+
+### Match-score bands rebanded, and consolidated to one owner
+
+New bands, at the user's request: **green with a glow from 88, blue from 70, orange below.**
+
+- **70 is now the same number everywhere.** It was previously three separate constants — `STRONG_MATCH_SCORE` in `agent/adzuna.ts`, `HIGH_MATCH_SCORE` in `lib/job-filters.ts`, and the bar's blue boundary inline in `JobsTable` — plus two copies of the banding logic in `JobsTable` and `JobInfo`. All of it now lives in `lib/match-score.ts`, which exports the two thresholds and the two class helpers. `agent/adzuna.ts` re-exports `HIGH_MATCH_SCORE as STRONG_MATCH_SCORE` so its own vocabulary survives without a second definition.
+- This also resolves a tension recorded in the Feature 09 entry. The bands used to be 90/80 and deliberately *not* aligned to the High Match filter. Now the blue boundary and the filter are both 70, so an orange bar reads as "below High Match" without opening the filter. `ui-rules.md` has been rewritten and its "do not reconcile one to the other" note removed.
+- **The glow is a token, not an inline colour.** `--shadow-success-glow` was added to `@theme` in `globals.css` alongside the existing card and button shadows, giving `shadow-success-glow`. Only the top band glows.
+- The job details badge uses the same bands on `-light` surfaces, so a score cannot read as two different strengths across two pages.
+
+**Instance list, with command evidence.** `grep -rn "GLOWING_MATCH_SCORE =\|HIGH_MATCH_SCORE =\|BLUE_MATCH_SCORE =\|STRONG_MATCH_SCORE ="` now returns exactly two lines, both in `lib/match-score.ts`. `grep -rln "match-score"` returns the four consumers:
+
+| File | What it uses |
+| --- | --- |
+| `lib/match-score.ts` | owns both thresholds and both class helpers |
+| `components/find-jobs/JobsTable.tsx` | `matchBarClassName` for the inline bar |
+| `components/job-details/JobInfo.tsx` | `matchBadgeClassName` for the header badge |
+| `app/find-jobs/page.tsx` | `HIGH_MATCH_SCORE` for the High and Low Match filters |
+| `agent/adzuna.ts` | `HIGH_MATCH_SCORE` for the strong-match count and the banner copy |
+
+Checked and deliberately **not** changed: the success tints in `MatchScore.tsx` (the AI reasoning tile and matched-skill pills) and `JobInfo.tsx` (the salary and location icon tiles). Those are semantic — matched means good, salary is money — not score bands, and rebanding them would be wrong.
+
+`typecheck`, `lint` and `build` are clean.

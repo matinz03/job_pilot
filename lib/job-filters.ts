@@ -1,5 +1,4 @@
 export const PAGE_SIZE = 20;
-export const HIGH_MATCH_SCORE = 70;
 
 export const MATCH_FILTERS = [
   { value: "all", label: "All Matches" },

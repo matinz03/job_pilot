@@ -8,8 +8,8 @@ import { SearchControls } from "@/components/find-jobs/SearchControls";
 import { DeleteAction } from "@/components/find-jobs/DeleteAction";
 import { deleteAllJobs } from "@/actions/jobs";
 import { createInsforgeServer } from "@/lib/insforge-server";
+import { HIGH_MATCH_SCORE } from "@/lib/match-score";
 import {
-  HIGH_MATCH_SCORE,
   PAGE_SIZE,
   emptyMessage,
   parseJobSearchParams,

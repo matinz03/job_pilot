@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { matchBadgeClassName } from "@/lib/match-score";
 import { BuildingIcon, CalendarIcon, JobTypeIcon, LocationIcon, SalaryIcon } from "@/components/job-details/icons";
 
 type JobInfoProps = {
@@ -11,14 +12,6 @@ type JobInfoProps = {
   foundAt: string;
   action?: ReactNode;
 };
-
-// The badge uses the same bands as the jobs table so one score never reads as two different
-// strengths across the app.
-function badgeClassName(score: number): string {
-  if (score >= 90) return "bg-success-light text-success-dark";
-  if (score >= 80) return "bg-info-light text-info-dark";
-  return "bg-warning/15 text-warning";
-}
 
 function InfoCard({ icon, iconClassName, label, value }: { icon: ReactNode; iconClassName: string; label: string; value: string }) {
   return (
@@ -46,7 +39,7 @@ export function JobInfo({ action, company, foundAt, jobType, location, matchScor
               <p className="mt-2 flex flex-wrap items-center gap-3 text-base text-text-secondary">
                 {company}
                 <span aria-hidden="true" className="text-text-muted">•</span>
-                <span className={`rounded-full px-3 py-1 text-sm font-medium ${badgeClassName(matchScore)}`}>
+                <span className={`rounded-full px-3 py-1 text-sm font-medium ${matchBadgeClassName(matchScore)}`}>
                   {matchScore}% Match Score
                 </span>
               </p>

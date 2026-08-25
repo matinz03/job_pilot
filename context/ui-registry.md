@@ -223,7 +223,7 @@ The filter bar is one borderless full-width input with an inset search icon, sep
 
 The jobs table uses no alternating row colours: white rows separated by `border-b border-border`, `last:border-b-0`, and `hover:bg-surface-secondary`. Headers are `text-xs font-medium uppercase tracking-wide text-text-secondary`. Column widths are fixed at 19/24/16/15/14/12 percent and rows are 65px. The design has five columns; a sixth, Location, was added because one search can now span several locations and a remote result would otherwise be indistinguishable from a local one. Company and Role gave up the width. The company cell pairs a 32px `rounded-lg border border-border bg-surface-secondary` icon tile with the company name as a link to the job details route.
 
-The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the fill width set from the score and its colour banded **as the design shows: `bg-success` from 90, `bg-info` from 80, `bg-warning` below**. `ui-rules.md` has been reconciled to these bands. They are deliberately not Feature 11's High Match threshold (`>= 70`) — colour says how strong the match is, the filter says whether it is worth the user's time.
+The match score bar is a 6px `bg-border` track, `w-24`, `rounded-full`, with the fill width set from the score and its colour banded **as the design shows: `bg-success` from 90, `bg-info` from 80, `bg-warning` below**. `ui-rules.md` records these bands. Anything that colours or filters by score must read from `lib/match-score.ts`; there is no second definition anywhere in the project.
 
 Pagination sits inside the table card above a `border-t border-border`: a results count with `font-semibold text-text-primary` numerals on the left, and page controls on the right. All page controls share `min-w-10 rounded-lg border px-3.5 py-2 text-sm font-medium`; the current page is `border-accent bg-accent-muted text-accent`, the gap is a borderless `...`, and Previous/Next disable to `text-text-muted` with no hover.
 
@@ -252,7 +252,7 @@ Last updated: 2026-08-25
 
 Section headings come in two sizes: `text-xl font-semibold` for named sections (Job Description, Company Research) and `text-xs font-semibold uppercase tracking-wide text-text-secondary` for labelled ones (AI Match Reasoning, Required Skills vs Your Profile), both as the design shows.
 
-The match badge is `rounded-full px-3 py-1 text-sm font-medium` and **uses the jobs table's score bands**, not a fixed colour — `bg-success-light text-success-dark` from 90, `bg-info-light text-info-dark` from 80, `bg-warning/15 text-warning` below. The design renders 85% green; the table renders it blue, and one score must not read as two strengths.
+The match badge is `rounded-full px-3 py-1 text-sm font-medium` and takes its colour from `matchBadgeClassName` in `lib/match-score.ts` — the same bands as the table bar, on `-light` surfaces, glow included at the top band. Never hand-roll these thresholds; one score must not read as two strengths.
 
 Skill pills are `rounded-full px-3 py-1.5 text-sm font-medium` with a leading icon: matched use `bg-success-light text-success-dark` with a check, gaps use `bg-accent-light text-accent` with a cross. Gaps are deliberately accent rather than error — a missing skill is a thing to address, not a failure.
 

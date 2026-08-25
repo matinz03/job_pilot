@@ -3,6 +3,7 @@ import type { createInsforgeServer } from "@/lib/insforge-server";
 import type { ProfileFormValues } from "@/lib/profile";
 import { scoreJob } from "@/agent/matcher";
 import type { DiscoveryResult, JobMatch, SavedJobSummary } from "@/agent/types";
+import { HIGH_MATCH_SCORE } from "@/lib/match-score";
 
 type InsforgeServer = Awaited<ReturnType<typeof createInsforgeServer>>;
 
@@ -15,7 +16,8 @@ type DiscoveryInput = {
   jobsPerLocation?: JobsPerLocation;
 };
 
-export const STRONG_MATCH_SCORE = 70;
+// A "strong match" and the High Match filter are the same threshold, owned by lib/match-score.
+export { HIGH_MATCH_SCORE as STRONG_MATCH_SCORE } from "@/lib/match-score";
 
 // Measured against the gateway: ten concurrent scoring calls take 131s for ten jobs, five take
 // 13.9s, three take 24.3s. It queues past five, so the pool is a throughput fix, not a politeness
@@ -78,7 +80,7 @@ export function summariseRun(jobsFound: number, jobsSaved: number, duplicates: n
   // and the strong count qualifies it.
   const strong = strongMatches > 0
     ? `, including ${strongMatches} strong ${strongMatches === 1 ? "match" : "matches"}`
-    : `, though none scored ${STRONG_MATCH_SCORE} or above`;
+    : `, though none scored ${HIGH_MATCH_SCORE} or above`;
 
   return `${found} and saved ${jobsSaved}${strong}.${alreadyHave}`;
 }
@@ -234,7 +236,7 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
       }));
     }
 
-    const strongMatches = savedJobs.filter((job) => job.matchScore >= STRONG_MATCH_SCORE).length;
+    const strongMatches = savedJobs.filter((job) => job.matchScore >= HIGH_MATCH_SCORE).length;
 
     const { error: completeError } = await insforge.database
       .from("agent_runs")
@@ -243,7 +245,7 @@ export async function runJobDiscovery(input: DiscoveryInput): Promise<DiscoveryR
       .eq("user_id", userId);
     if (completeError) console.error("[agent/adzuna] complete run", completeError);
 
-    await log(insforge, { userId, runId, level: "success", message: `Saved ${savedJobs.length} of ${results.length} ${results.length === 1 ? "job" : "jobs"}, ${strongMatches} scoring ${STRONG_MATCH_SCORE} or above.` });
+    await log(insforge, { userId, runId, level: "success", message: `Saved ${savedJobs.length} of ${results.length} ${results.length === 1 ? "job" : "jobs"}, ${strongMatches} scoring ${HIGH_MATCH_SCORE} or above.` });
 
     return {
       runId,
