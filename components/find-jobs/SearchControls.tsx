@@ -107,14 +107,14 @@ export function SearchControls() {
       </form>
 
       {outcome && "message" in outcome && (
-        <p aria-live="polite" className="mt-5 flex items-center gap-3 rounded-lg bg-success-lightest px-5 py-4 text-sm font-medium text-success-dark">
+        <p aria-live="polite" className="mt-5 flex items-center gap-3 rounded-md bg-success-lightest px-5 py-4 text-sm font-medium text-success-dark">
           <span className="text-success-alt"><SparkleIcon /></span>
           {outcome.message}
         </p>
       )}
 
       {outcome && "error" in outcome && (
-        <p aria-live="assertive" className="mt-5 rounded-lg bg-error/5 px-5 py-4 text-sm font-medium text-error" role="alert">
+        <p aria-live="assertive" className="mt-5 rounded-md bg-error/5 px-5 py-4 text-sm font-medium text-error" role="alert">
           {outcome.error}
         </p>
       )}

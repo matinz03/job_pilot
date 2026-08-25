@@ -217,7 +217,7 @@ Last updated: 2026-08-25
 
 **Pattern notes:** Three stacked cards inside the standard 1440px frame at 32px gutters — search controls, filter bar, then one card holding the table and its pagination footer. `SearchControls` is the page's only client component; the table reads real jobs from the database on the server. Card and form treatments match the profile page; inputs here keep a 12px vertical rhythm because the design shows a larger search field than the profile form, but share its `rounded-md` radius.
 
-The search card carries three labelled controls and the accent primary action on one baseline — job title, location, and a jobs-per-location select using the same `appearance-none` plus overlaid chevron treatment as the filter bar, the first input carrying an inset leading search icon. During a search both inputs and the button disable, and the button label becomes `Finding jobs...` — the same in-button progress pattern the profile card uses for extraction and generation. Its result banner is `bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line. Search failures use the matching error surface, `bg-error/5` with `text-error` and `role="alert"`, at the same size and position, so success and failure occupy the same slot.
+The search card carries three labelled controls and the accent primary action on one baseline — job title, location, and a jobs-per-location select using the same `appearance-none` plus overlaid chevron treatment as the filter bar, the first input carrying an inset leading search icon. During a search both inputs and the button disable, and the button label becomes `Finding jobs...` — the same in-button progress pattern the profile card uses for extraction and generation. Its result banner is `rounded-md bg-success-lightest` with `text-success-dark` and a leading `text-success-alt` sparkle — the first use of the success surface as a full-width inline banner rather than a message line. Search failures use the matching error surface, `rounded-md bg-error/5` with `text-error` and `role="alert"`, at the same size and position, so success and failure occupy the same slot.
 
 The filter bar is one borderless full-width input with an inset search icon, separated from two dropdowns by `sm:border-l sm:border-border`. The dropdowns are native `<select>` elements carrying the secondary button treatment plus `appearance-none` and an overlaid, pointer-events-none chevron — so they look like the design's buttons while keeping native keyboard and mobile behaviour. All three write to the URL: the text input debounced at 400ms through `router.replace`, the selects immediately.
 
@@ -331,13 +331,15 @@ Both fall back from `external_apply_url` to `source_url` and **render nothing at
 
 **Everything the user operates is `rounded-md`** — every button and action link, primary, secondary, destructive or pagination, and every input, select and textarea. That matches the 8px `ui-rules.md` specifies for both buttons and form inputs. Verified across the codebase: 29 action elements and all four form-control class definitions.
 
+Inline message banners — the tinted result and error lines that sit directly beneath the controls they report on — are `rounded-md` too, so a banner reads as part of the control group rather than as a separate surface floating inside the card.
+
 Other radii belong to things that are not controls, and each has a reason:
 
 | Radius | Used for |
 | --- | --- |
 | `rounded-2xl` | section cards, the run scope notice |
 | `rounded-xl` | info cards, nested surfaces such as the resume dropzone and role cards |
-| `rounded-lg` | icon tiles, inline message banners |
+| `rounded-lg` | icon tiles |
 | `rounded-full` | badges, skill pills, score bars, avatar-style circles |
 | `rounded-sm` | the profile page's uppercase field chips |
 
