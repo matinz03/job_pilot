@@ -207,7 +207,7 @@ Last updated: 2026-08-25
 | --- | --- |
 | Background | `bg-background`, `bg-surface`, `bg-surface-secondary` |
 | Border | `border border-border` |
-| Border radius | `rounded-2xl` cards, `rounded-lg` inputs, buttons, page controls and the company tile, `rounded-full` score bars |
+| Border radius | `rounded-2xl` cards, `rounded-lg` inputs, selects and the company tile, `rounded-md` every action and page control, `rounded-full` score bars |
 | Text — primary | `text-text-primary` |
 | Text — secondary | `text-text-secondary`, `text-text-muted` |
 | Spacing | `space-y-6` between cards, `p-6` search card, `p-4` filter card, `px-6 py-4` table cells |
@@ -240,7 +240,7 @@ Last updated: 2026-08-25
 | --- | --- |
 | Background | `bg-background`, `bg-surface`, `bg-surface-secondary` |
 | Border | `border border-border` |
-| Border radius | `rounded-2xl` sections, `rounded-xl` info cards and the apply button, `rounded-lg` icon tiles and secondary actions, `rounded-full` pills |
+| Border radius | `rounded-2xl` sections, `rounded-xl` info cards, `rounded-lg` icon tiles, `rounded-md` every action, `rounded-full` badges and pills |
 | Text — primary | `text-text-primary` |
 | Text — secondary | `text-text-secondary`, `text-text-muted` |
 | Spacing | `space-y-6` / `gap-6` between sections, `p-6 sm:p-8` section padding, `p-5` info cards |
@@ -258,7 +258,7 @@ Skill pills are `rounded-full px-3 py-1.5 text-sm font-medium` with a leading ic
 
 Info cards are a four-column grid of `rounded-xl border border-border bg-surface p-5 shadow-card`, each pairing a tinted icon tile with a `text-base font-semibold` value above a `text-xs uppercase text-text-muted` label. Values truncate rather than wrap.
 
-The `Research Company` action is `rounded-full bg-accent px-5 py-2.5` — **the only action button in the project using a pill radius**, taken from the design. Every other action is `rounded-md` or `rounded-lg`. Treat it as a known deviation rather than a pattern to copy; if it is reconciled later, it becomes `rounded-md`. It renders disabled until the research agent exists, with a `title` explaining why.
+The `Research Company` action is `rounded-md bg-accent px-5 py-2.5`. The design draws it as a pill; it was reconciled to the project radius so that no action in the project is pill-shaped — pills are reserved for badges. It renders disabled until the research agent exists, with a `title` explaining why.
 
 Empty state for research: a `rounded-full bg-surface-secondary` icon circle, a `text-base font-medium` line, and muted explanatory copy capped at 360px, sitting under a `border-t border-border` divider inside the same card as its heading and action.
 
@@ -315,7 +315,7 @@ Last updated: 2026-08-25
 | --- | --- |
 | Background | `bg-surface` secondary; `bg-accent` primary |
 | Border | `border border-border` secondary; none on primary |
-| Border radius | `rounded-lg` secondary; `rounded-xl` primary |
+| Border radius | `rounded-md` — the project radius for every action |
 | Text — primary | `text-text-dark` secondary; `text-accent-foreground` primary |
 | Text — secondary | none |
 | Spacing | `px-5 py-3` secondary; `px-6 py-4` primary |
@@ -323,6 +323,22 @@ Last updated: 2026-08-25
 | Shadow | `shadow-button` on both |
 | Accent usage | `bg-accent` on the primary apply action |
 
-**Pattern notes:** Two outward links to the same destination at two weights. `View Job Post` is a compact secondary action inside the header card; `Apply Now at {company}` is a full-width primary at the foot of the page, the heaviest control on it, and the only place the apply URL is named after the employer.
+**Pattern notes:** Two outward links to the same destination at two weights, separated by size and colour rather than by radius. `View Job Post` is a compact secondary action inside the header card; `Apply Now at {company}` is a full-width primary at the foot of the page, the heaviest control on it, and the only place the apply URL is named after the employer.
 
 Both fall back from `external_apply_url` to `source_url` and **render nothing at all when neither exists** — an apply button that goes nowhere is worse than no button. Both carry `target="_blank"` with `rel="noopener noreferrer"`.
+
+## Radius rule — actions
+
+Every action in the project — button or link, primary, secondary, destructive or pagination — is `rounded-md`, matching the 8px button radius in `ui-rules.md`. Verified across the codebase: 29 action elements, all `rounded-md`.
+
+Non-`rounded-md` radii are for things that are not actions, and each has a reason:
+
+| Radius | Used for |
+| --- | --- |
+| `rounded-2xl` | section cards, the run scope notice |
+| `rounded-xl` | info cards, nested surfaces such as the resume dropzone |
+| `rounded-lg` | inputs and selects, icon tiles, inline message banners |
+| `rounded-full` | badges, skill pills, score bars, avatar-style circles |
+| `rounded-sm` | the profile page's uppercase field chips |
+
+**Known remaining drift:** the Find Jobs search inputs and both filter selects are `rounded-lg`, while `ui-rules.md` specifies 8px for form inputs too. That is a separate reconciliation from this one and has not been made.

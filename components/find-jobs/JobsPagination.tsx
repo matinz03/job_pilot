@@ -9,7 +9,7 @@ type JobsPaginationProps = {
   params: JobSearchParams;
 };
 
-const controlClassName = "min-w-10 rounded-lg border px-3.5 py-2 text-center text-sm font-medium transition-colors";
+const controlClassName = "min-w-10 rounded-md border px-3.5 py-2 text-center text-sm font-medium transition-colors";
 const enabledClassName = "border-border bg-surface text-text-dark hover:bg-surface-secondary";
 const disabledClassName = "border-border bg-surface text-text-muted cursor-not-allowed";
 

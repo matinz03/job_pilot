@@ -7,7 +7,7 @@ export function ViewJobPostButton({ applyUrl }: { applyUrl: string }) {
 
   return (
     <a
-      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-5 py-3 text-sm font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary"
+      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-5 py-3 text-sm font-medium text-text-dark shadow-button transition-colors hover:bg-surface-secondary"
       href={applyUrl}
       rel="noopener noreferrer"
       target="_blank"
@@ -22,7 +22,7 @@ export function ApplyNowButton({ applyUrl, company }: JobActionsProps) {
 
   return (
     <a
-      className="block rounded-xl bg-accent px-6 py-4 text-center text-base font-medium text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover"
+      className="block rounded-md bg-accent px-6 py-4 text-center text-base font-medium text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-accent-dark hover:shadow-button-hover"
       href={applyUrl}
       rel="noopener noreferrer"
       target="_blank"
