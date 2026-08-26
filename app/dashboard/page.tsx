@@ -6,6 +6,7 @@ import {
 } from "@/components/dashboard/DashboardCharts";
 import { Navbar } from "@/components/layout/Navbar";
 import { formatActivityTime, getDashboardActivity } from "@/lib/dashboard-activity";
+import { getDashboardAnalytics } from "@/lib/dashboard-analytics";
 import { getDashboardStats, type DashboardStats } from "@/lib/dashboard-stats";
 import { createInsforgeServer } from "@/lib/insforge-server";
 
@@ -31,9 +32,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [dashboardStats, activity] = await Promise.all([
+  const [dashboardStats, activity, analytics] = await Promise.all([
     getDashboardStats(insforge),
     getDashboardActivity(insforge, user.id),
+    getDashboardAnalytics(user.id),
   ]);
   const stats = createStats(dashboardStats);
 
@@ -79,16 +81,16 @@ export default async function DashboardPage() {
           </article>
 
           <ChartCard title="Company Research Activity">
-            <CompanyResearchChart />
+            <CompanyResearchChart chart={analytics.companyResearch} />
           </ChartCard>
         </section>
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <ChartCard title="Jobs Found Over Time" tall>
-            <JobsFoundChart />
+            <JobsFoundChart chart={analytics.jobsFound} />
           </ChartCard>
           <ChartCard title="Match Score Distribution" tall>
-            <MatchScoreChart />
+            <MatchScoreChart chart={analytics.matchScores} />
           </ChartCard>
         </section>
       </main>

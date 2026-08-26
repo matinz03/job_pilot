@@ -639,6 +639,14 @@ await posthog.shutdown(); // required — ensures event is sent
 - Call `posthog.identify(userId)` after login on client side
 - Call `posthog.reset()` on logout on client side
 
+### Dashboard Analytics Queries
+
+PostHog capture keys cannot read analytics. Dashboard queries use only the unprefixed, server-only variables `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`; never expose either through `NEXT_PUBLIC_` variables or a client component.
+
+Query `POST /api/projects/{projectId}/query/` at the PostHog app host. The existing capture host is commonly an ingestion hostname such as `eu.i.posthog.com`; replace `.i.posthog.com` with `.posthog.com` before calling the query API. Send `Authorization: Bearer {POSTHOG_PERSONAL_API_KEY}` and a `HogQLQuery` body.
+
+Every dashboard query must filter `distinct_id` to the authenticated application user, aggregate in PostHog, and return only chart-ready rows. Run independent chart queries in parallel. A failed analytics request renders an unavailable state inside that chart card; it never blocks the rest of the dashboard. Zero events render an empty state, not a fabricated all-zero chart.
+
 ---
 
 ## @react-pdf/renderer
