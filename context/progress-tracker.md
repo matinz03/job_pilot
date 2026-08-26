@@ -8,8 +8,8 @@ Update this file after every completed feature. Any AI agent reading this should
 
 **Phase:** Phase 3 — Find Jobs Page
 **Phase:** Phase 4 — Job Details Page
-**Last completed:** 15 Stats Bar — Real Data
-**Next:** 16 Recent Activity — Real Data
+**Last completed:** 16 Recent Activity — Real Data
+**Next:** 17 Analytics Charts — PostHog Data
 
 ---
 
@@ -44,7 +44,7 @@ Update this file after every completed feature. Any AI agent reading this should
 
 - [x] 14 Dashboard Page — Full UI
 - [x] 15 Stats Bar — Real Data
-- [ ] 16 Recent Activity — Real Data
+- [x] 16 Recent Activity — Real Data
 - [ ] 17 Analytics Charts — PostHog Data
 
 ---
@@ -89,8 +89,9 @@ Update this file after every completed feature. Any AI agent reading this should
 - TypeScript runs in two tiers. `typescript` is pinned to `~6.0.3` and stays the compiler that `next build`, the editor, and ESLint all use; `typescript7` is an alias of `typescript@7` used only by `npm run typecheck:fast`. The pin is `~6.0.3`, not `^6.0.3`, because typescript-eslint peers `<6.1.0` and a 6.1 bump would silently gut the lint tree. `npm run typecheck` (TS 6) is the gate; `typecheck:fast` (TS 7) is the inner loop and runs the same 1025 files roughly 3x quicker.
 - TypeScript 7 as the sole compiler was attempted first and reverted. It works for builds — `tsc` is clean and Next 16.3.2 type-checks with it in 0.77s against 4.0s, because `experimental.useTypeScriptCli` already defaults to `true` and `next build` shells out to the local CLI — but TS 7 ships no programmatic API (no `lib/typescript.js`), so npm strips `@typescript-eslint/parser`, `eslint-plugin`, `typescript-estree`, and `type-utils` from the tree and `npm run lint` dies loading `eslint-config-next`. An npm `overrides` block nesting TS 6 under typescript-eslint does not help: npm removes the packages rather than nesting a second TypeScript. Revisit at TS 7.1, when the stable API lands and typescript-eslint can widen its peer range; the move is then a version bump plus deleting the `typescript7` alias and the `typecheck:fast` script.
 - The 29 skills in `.agents/skills/` are registered as Claude Code project skills through directory junctions in `.claude/skills/`, so `/architect`, `/imprint`, `/review`, `/recover`, and `/remember` work as slash commands. Junctions rather than copies because `.agents/skills` is the hash-locked source in `skills-lock.json`; both directories are gitignored, so nothing is committed. `tailwind-css` stays invisible by its own frontmatter (`user-invocable: false` plus `disable-model-invocation: true`) and is a reference bundle, not a skill to invoke.
-- Feature 14 uses static activity and chart data plus the installed `recharts` client component to match `context/designs/dashboard.png`; Features 16–17 will replace those data sources with real database and PostHog data. The shared Navbar now has the dashboard, search, and profile icons shown in the reference, so every existing Navbar instance receives the same navigation treatment.
+- Feature 14 uses static chart data plus the installed `recharts` client component to match `context/designs/dashboard.png`; Feature 17 will replace chart data with PostHog data. The shared Navbar now has the dashboard, search, and profile icons shown in the reference, so every existing Navbar instance receives the same navigation treatment.
 - Feature 15 replaces only dashboard stat-card values. `public.dashboard_stats()` is a security-invoker aggregate RPC: RLS and `auth.uid()` keep every value user-scoped, and the page receives one small row rather than downloading jobs. The cards retain all-time values while their live trends compare rolling current seven days with prior seven. `jobs.researched_at` is nullable and written atomically only after a company dossier saves; it supplies truthful research activity cohorts. Job discovery and company research revalidate `/dashboard` after successful writes.
+- Feature 16 reads no agent logs. It queries up to ten completed `agent_runs` and ten `jobs` with `researched_at`, explicitly scopes both queries by `user_id`, then merges and sorts those lightweight rows server-side before showing the newest ten. Runs have blue info dots, research has green success dots, and a purposeful empty state replaces decorative activity when neither exists.
 
 ## Notes
 

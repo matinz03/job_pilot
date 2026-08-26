@@ -49,7 +49,7 @@ Last updated: 2026-08-23
 | Shadow | `shadow-button` on guest CTA; none on authenticated logout |
 | Accent usage | active `border-accent text-accent`; `hover:text-accent` |
 
-**Pattern notes:** Full-width 64px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Authenticated routes pass their active item to display a 2px purple bottom border and accent text. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
+**Pattern notes:** Full-width 80px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Authenticated routes pass their active item to display a 2px purple bottom border and accent text. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
 
 ### Hero and CTA
 
@@ -373,14 +373,14 @@ Last updated: 2026-08-26
 
 | Property | Class |
 | --- | --- |
-| Background | `bg-background` page; `bg-surface` cards |
+| Background | `bg-background` page; `bg-surface` cards; `bg-surface-secondary` activity empty state |
 | Border | `border border-border` cards; `border-l border-border` activity timeline |
 | Border radius | `rounded-2xl` cards; `rounded-full` timeline markers |
 | Text — primary | `text-text-primary` for headings, values, and activity titles |
 | Text — secondary | `text-text-secondary` subtitles and labels; `text-text-muted` supporting copy and chart axes |
-| Spacing | `py-10`, `mt-8` sections, `gap-6` grids, `p-6` cards |
+| Spacing | `py-10`, `mt-8` sections, `gap-6` grids, `p-6` cards; activity rows use `space-y-6`, empty state `px-5 py-6` |
 | Hover state | Navbar links use `hover:text-accent`; static dashboard cards have none |
 | Shadow | `shadow-card` cards |
 | Accent usage | `text-accent` active navigation; `text-success-dark` and `text-error` live trends; semantic accent, info, and success markers; charts read CSS token variables |
 
-**Pattern notes:** The dashboard is a desktop-first analytics overview inside the standard 1440px frame. Summary metrics remain four equal `rounded-2xl` cards; data areas use the same card treatment, with Recharts isolated in a client component and colored only through design-token CSS variables. Live card trends use success for gains, error for declines, and muted copy for no baseline, no change, or no scores; never preserve a decorative positive trend when data says otherwise. The shared Navbar is 80px high and uses a 16px outline icon plus label for each desktop link; keep its active bottom border and icon state together across every authenticated route.
+**Pattern notes:** The dashboard is a desktop-first analytics overview inside the standard 1440px frame. Summary metrics remain four equal `rounded-2xl` cards; data areas use the same card treatment, with Recharts isolated in a client component and colored only through design-token CSS variables. Live card trends use success for gains, error for declines, and muted copy for no baseline, no change, or no scores; never preserve a decorative positive trend when data says otherwise. Recent Activity uses only info-blue completed-search dots and success-green research dots. With no real events it swaps the timeline for a `rounded-xl bg-surface-secondary` explanation, never mock activity. The shared Navbar is 80px high and uses a 16px outline icon plus label for each desktop link; keep its active bottom border and icon state together across every authenticated route.

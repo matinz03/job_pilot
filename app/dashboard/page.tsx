@@ -5,16 +5,9 @@ import {
   MatchScoreChart,
 } from "@/components/dashboard/DashboardCharts";
 import { Navbar } from "@/components/layout/Navbar";
+import { formatActivityTime, getDashboardActivity } from "@/lib/dashboard-activity";
 import { getDashboardStats, type DashboardStats } from "@/lib/dashboard-stats";
 import { createInsforgeServer } from "@/lib/insforge-server";
-
-const activity = [
-  { title: "Found 8 jobs for Frontend Engineer", time: "10 mins ago", tone: "accent" },
-  { title: "Researched Stripe", time: "1 hour ago", tone: "info" },
-  { title: "Found 12 jobs for React Developer", time: "2 hours ago", tone: "success" },
-  { title: "Researched Vercel", time: "Yesterday", tone: "accent" },
-  { title: "Found 10 jobs for Full Stack Engineer", time: "Yesterday", tone: "success" },
-] as const;
 
 const trendToneClasses = {
   negative: "text-error",
@@ -23,7 +16,6 @@ const trendToneClasses = {
 } as const;
 
 const activityToneClasses = {
-  accent: "bg-accent",
   info: "bg-info",
   success: "bg-success",
 } as const;
@@ -39,7 +31,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const dashboardStats = await getDashboardStats(insforge);
+  const [dashboardStats, activity] = await Promise.all([
+    getDashboardStats(insforge),
+    getDashboardActivity(insforge, user.id),
+  ]);
   const stats = createStats(dashboardStats);
 
   return (
@@ -65,15 +60,22 @@ export default async function DashboardPage() {
         <section className="mt-8 grid gap-6 xl:grid-cols-2">
           <article className="rounded-2xl border border-border bg-surface p-6 shadow-card">
             <h2 className="text-xl font-semibold text-text-primary">Recent Activity</h2>
-            <ol className="mt-6 space-y-6 border-l border-border pl-5">
-              {activity.map((item) => (
-                <li className="relative" key={`${item.title}-${item.time}`}>
-                  <span className={`absolute -left-[26px] top-1 size-3 rounded-full border-2 border-surface ${activityToneClasses[item.tone]}`} />
-                  <p className="text-sm font-medium text-text-primary">{item.title}</p>
-                  <p className="mt-1 text-sm text-text-muted">{item.time}</p>
-                </li>
-              ))}
-            </ol>
+            {activity.length === 0 ? (
+              <div className="mt-6 rounded-xl bg-surface-secondary px-5 py-6">
+                <p className="text-sm font-medium text-text-primary">No activity yet</p>
+                <p className="mt-1 text-sm text-text-secondary">Find jobs or research a company to see it here.</p>
+              </div>
+            ) : (
+              <ol className="mt-6 space-y-6 border-l border-border pl-5">
+                {activity.map((item) => (
+                  <li className="relative" key={item.id}>
+                    <span className={`absolute -left-[26px] top-1 size-3 rounded-full border-2 border-surface ${activityToneClasses[item.tone]}`} />
+                    <p className="text-sm font-medium text-text-primary">{item.title}</p>
+                    <p className="mt-1 text-sm text-text-muted">{formatActivityTime(item.timestamp)}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
           </article>
 
           <ChartCard title="Company Research Activity">
