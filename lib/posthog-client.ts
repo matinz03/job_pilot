@@ -13,7 +13,9 @@ export function initPostHog(): void {
 
   posthog.init(apiKey, {
     api_host: "/ingest",
-    capture_exceptions: true,
+    // Capture exceptions in production only. Development builds raise hot-reload
+    // errors that would otherwise flood error tracking with localhost noise.
+    capture_exceptions: process.env.NODE_ENV === "production",
     capture_pageview: false,
     ui_host: host,
   });
