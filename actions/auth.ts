@@ -1,7 +1,7 @@
 "use server";
 
 import { createAuthActions } from "@insforge/sdk/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { OAUTH_CODE_VERIFIER_KEY } from "@/lib/auth-constants";
 type AuthActionResult = {
   success: boolean;
@@ -22,7 +22,7 @@ type StartOAuthActionResult = {
 
 type OAuthProvider = "google" | "github";
 
-function appUrl(): string | null {
+function configuredAppUrl(): string | null {
   const value = process.env.NEXT_PUBLIC_APP_URL;
   if (!value) return null;
   try {
@@ -32,10 +32,27 @@ function appUrl(): string | null {
   }
 }
 
+async function appUrl(): Promise<string | null> {
+  const configured = configuredAppUrl();
+  if (configured) return configured;
+
+  const requestHeaders = await headers();
+  const host = (requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"))?.split(",")[0]?.trim();
+  const protocol = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim()
+    ?? (process.env.NODE_ENV === "production" ? "https" : "http");
+  if (!host || (protocol !== "http" && protocol !== "https")) return null;
+
+  try {
+    return new URL(`${protocol}://${host}`).origin;
+  } catch {
+    return null;
+  }
+}
+
 export async function startOAuthSignIn(provider: OAuthProvider): Promise<StartOAuthActionResult> {
-  const origin = appUrl();
+  const origin = await appUrl();
   if (!origin) {
-    console.error("[actions/auth] NEXT_PUBLIC_APP_URL is missing or invalid");
+    console.error("[actions/auth] no valid OAuth callback origin");
     return { success: false, error: "Sign-in is not configured for this deployment." };
   }
 

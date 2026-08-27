@@ -649,7 +649,7 @@ Every dashboard query must filter `distinct_id` to the authenticated application
 
 ### SSR OAuth And Cookie Refresh
 
-OAuth begins through `createAuthActions()` in `actions/auth.ts`, which saves its PKCE verifier in an httpOnly, ten-minute cookie. InsForge redirects to `GET /api/auth/callback`, where the server exchanges the code and writes SDK-owned session cookies before redirecting to `/dashboard`. Never store the verifier in `sessionStorage` or exchange an OAuth code from a client component.
+OAuth begins through `createAuthActions()` in `actions/auth.ts`, which saves its PKCE verifier in an httpOnly, ten-minute cookie. The callback origin uses `NEXT_PUBLIC_APP_URL` when configured and otherwise derives the current forwarded request origin. InsForge redirects to `GET /api/auth/callback`, where the server exchanges the code and writes SDK-owned session cookies before redirecting to `/dashboard`. Never store the verifier in `sessionStorage` or exchange an OAuth code from a client component.
 
 `proxy.ts` imports `updateSession` from `@insforge/sdk/ssr/middleware` and covers protected pages plus protected API routes. Auth routes remain outside the Proxy matcher so OAuth and refresh can complete; individual API handlers still verify the authenticated user before work starts. The refresh token remains httpOnly and server-owned.
 

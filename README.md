@@ -55,7 +55,7 @@ POSTHOG_PROJECT_ID=
 
 Use Vercel for the synchronous AI flows: job discovery and company research can run for up to five minutes, matching their `maxDuration = 300` route configuration.
 
-1. Add every environment variable above to the Production environment, changing `NEXT_PUBLIC_APP_URL` to the deployed origin.
+1. Add every environment variable above to the Production environment. `NEXT_PUBLIC_APP_URL` is recommended as the deployed origin; if absent, OAuth derives the forwarded request origin.
 2. In InsForge Auth configuration, add `https://your-domain/api/auth/callback` to allowed redirect URLs. Update Google and GitHub OAuth settings if their redirect lists are restricted.
 3. Redeploy after changing an environment variable; `NEXT_PUBLIC_*` values are embedded during the build.
 
