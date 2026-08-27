@@ -315,3 +315,8 @@ Checked and deliberately **not** changed: the success tints in `MatchScore.tsx` 
 - Stagehand extraction schemas now use required fields, because Model Gateway rejects optional JSON-Schema properties. Prompts require empty strings or arrays when evidence is unavailable.
 - Synthesis preserves strict structural validation but fills missing prose with evidence-safe fallback copy, so an otherwise valid model response cannot discard an entire dossier.
 - `POST /api/agent/research` streams actual agent stages to the Job Details card: finding the company site, opening the browser, reading the homepage, reviewing pages, building the dossier, and saving it. The UI marks completed, current, and pending stages; it is not timer-based progress.
+
+### Auth fix — surface config errors and instrument the sign-in failure path
+
+- `lib/insforge-client.ts` no longer asserts its env vars non-null. It reads `NEXT_PUBLIC_INSFORGE_URL` and `NEXT_PUBLIC_INSFORGE_ANON_KEY`, exports `isInsforgeConfigured`, and builds the client with empty strings when a var is absent. Missing configuration used to pass the build and fail only on a button click.
+- `LoginForm.tsx` renders a setup message instead of dead OAuth buttons when `isInsforgeConfigured` is false, shows the provider-specific InsForge error message when a sign-in start fails, and calls `posthog.captureException` on both failure branches so the failure reaches Error Tracking as a `$exception` from `/login`.
