@@ -44,12 +44,12 @@ Last updated: 2026-08-23
 | Border radius | none |
 | Text — primary | active `text-accent`; inactive `text-text-dark` |
 | Text — secondary | none |
-| Spacing | `h-16`, `px-4 sm:px-6 lg:px-8` |
-| Hover state | `hover:text-accent`; guest CTA uses `hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover`; authenticated logout uses `hover:bg-surface-secondary` |
+| Spacing | `h-20`, `px-4 sm:px-6 lg:px-8`; mobile panel `p-2`, links `px-3 py-2` |
+| Hover state | `hover:text-accent`; hamburger and mobile links use `hover:bg-surface-secondary`; guest CTA uses `hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover`; authenticated logout uses `hover:bg-surface-secondary` |
 | Shadow | `shadow-button` on guest CTA; none on authenticated logout |
 | Accent usage | active `border-accent text-accent`; `hover:text-accent` |
 
-**Pattern notes:** Full-width 80px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Authenticated routes pass their active item to display a 2px purple bottom border and accent text. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
+**Pattern notes:** Full-width 80px white header. Content aligns to 1440px maximum page width. Desktop navigation is centered. Authenticated routes pass their active item to display a 2px purple bottom border and accent text. Below `md`, desktop navigation and its auth action collapse into an accessible 40px `rounded-md` hamburger; its `rounded-xl border border-border bg-surface p-2 shadow-card` panel reuses every route, active state, and auth action. Guests see dark primary CTA; authenticated pages use a secondary logout button with inline human-readable error text.
 
 ### Hero and CTA
 

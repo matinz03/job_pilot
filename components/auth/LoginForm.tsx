@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { OAUTH_CODE_VERIFIER_KEY } from "@/lib/auth-constants";
-import { insforge } from "@/lib/insforge-client";
+import { startOAuthSignIn } from "@/actions/auth";
 
 type OAuthProvider = "google" | "github";
 
@@ -15,22 +14,14 @@ export function LoginForm() {
     setIsLoading(provider);
 
     try {
-      const { data, error: authError } = await insforge.auth.signInWithOAuth(
-        provider,
-        {
-          redirectTo: `${window.location.origin}/callback`,
-          skipBrowserRedirect: true,
-        },
-      );
-
-      if (authError || !data.url || !data.codeVerifier) {
-        setError("Could not start sign-in. Please try again.");
+      const result = await startOAuthSignIn(provider);
+      if (!result.success || !result.url) {
+        setError(result.error ?? "Could not start sign-in. Please try again.");
         setIsLoading(null);
         return;
       }
 
-      window.sessionStorage.setItem(OAUTH_CODE_VERIFIER_KEY, data.codeVerifier);
-      window.location.assign(data.url);
+      window.location.assign(result.url);
     } catch (authError) {
       console.error("[LoginForm]", authError);
       setError("Could not start sign-in. Please try again.");

@@ -1,17 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
+import { MobileNavigation } from "@/components/layout/MobileNavigation";
 import { SignOutButton } from "@/components/layout/SignOutButton";
+import { navigationItems, type NavigationItemId } from "@/lib/navigation";
 
 type NavbarProps = {
   isAuthenticated?: boolean;
-  activeItem?: "dashboard" | "find-jobs" | "profile";
+  activeItem?: NavigationItemId;
 };
 
-const navigationItems = [
-  { href: "/dashboard", label: "Dashboard", id: "dashboard", icon: DashboardIcon },
-  { href: "/find-jobs", label: "Find Jobs", id: "find-jobs", icon: SearchIcon },
-  { href: "/profile", label: "Profile", id: "profile", icon: ProfileIcon },
-] as const;
+const navigationIcons = {
+  dashboard: DashboardIcon,
+  "find-jobs": SearchIcon,
+  profile: ProfileIcon,
+};
 
 export function Navbar({ isAuthenticated = false, activeItem }: NavbarProps) {
   return (
@@ -26,7 +28,7 @@ export function Navbar({ isAuthenticated = false, activeItem }: NavbarProps) {
         <div className="hidden h-full items-center gap-8 text-sm font-medium md:flex">
           {navigationItems.map((item) => {
             const isActive = item.id === activeItem;
-            const Icon = item.icon;
+            const Icon = navigationIcons[item.id];
 
             return (
               <Link
@@ -44,16 +46,19 @@ export function Navbar({ isAuthenticated = false, activeItem }: NavbarProps) {
             );
           })}
         </div>
-        {isAuthenticated ? (
-          <SignOutButton />
-        ) : (
-          <Link
-            className="rounded-md bg-overlay px-4 py-2 text-sm font-medium text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover"
-            href="/login"
-          >
-            Start for free
-          </Link>
-        )}
+        <div className="hidden md:block">
+          {isAuthenticated ? (
+            <SignOutButton />
+          ) : (
+            <Link
+              className="rounded-md bg-overlay px-4 py-2 text-sm font-medium text-accent-foreground shadow-button transition-all hover:-translate-y-0.5 hover:bg-overlay-dark hover:shadow-button-hover"
+              href="/login"
+            >
+              Start for free
+            </Link>
+          )}
+        </div>
+        <MobileNavigation activeItem={activeItem} isAuthenticated={isAuthenticated} />
       </nav>
     </header>
   );

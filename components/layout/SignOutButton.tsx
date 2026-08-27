@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "@/actions/auth";
 import { posthog } from "@/lib/posthog-client";
 
-export function SignOutButton() {
+export function SignOutButton({ fullWidth = false }: { fullWidth?: boolean }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -28,9 +28,9 @@ export function SignOutButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className={`flex flex-col gap-1 ${fullWidth ? "items-stretch" : "items-end"}`}>
       <button
-        className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60"
+        className={`rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60 ${fullWidth ? "w-full" : ""}`}
         disabled={isPending}
         onClick={() => void handleSignOut()}
         type="button"

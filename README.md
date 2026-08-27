@@ -36,7 +36,7 @@ Create `.env.local` with configured credentials for services in use. Keep all va
 ```bash
 NEXT_PUBLIC_INSFORGE_URL=
 NEXT_PUBLIC_INSFORGE_ANON_KEY=
-INSFORGE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ADZUNA_APP_ID=
 ADZUNA_APP_KEY=
@@ -49,7 +49,17 @@ POSTHOG_PERSONAL_API_KEY=
 POSTHOG_PROJECT_ID=
 ```
 
-`POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` power server-only dashboard aggregates. Browserbase uses `BROWSERBASE_API_KEY`; no Browserbase project ID is required.
+`POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` power server-only dashboard aggregates. Browserbase uses `BROWSERBASE_API_KEY`; no Browserbase project ID is required. `NEXT_PUBLIC_POSTHOG_HOST` may be either a PostHog app or ingestion host; the app derives the matching ingest region at build time.
+
+## Deploy on Vercel
+
+Use Vercel for the synchronous AI flows: job discovery and company research can run for up to five minutes, matching their `maxDuration = 300` route configuration.
+
+1. Add every environment variable above to the Production environment, changing `NEXT_PUBLIC_APP_URL` to the deployed origin.
+2. In InsForge Auth configuration, add `https://your-domain/api/auth/callback` to allowed redirect URLs. Update Google and GitHub OAuth settings if their redirect lists are restricted.
+3. Redeploy after changing an environment variable; `NEXT_PUBLIC_*` values are embedded during the build.
+
+Never commit deployment keys. A missing server key returns a safe user-facing failure and is logged only on the server.
 
 ## Checks
 

@@ -1,9 +1,11 @@
-import { createServerClient, updateSession } from "@insforge/sdk/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
+import { updateSession } from "@insforge/sdk/ssr/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next();
+  const isApiRequest = request.nextUrl.pathname.startsWith("/api/");
   try {
     const { accessToken, error } = await updateSession({
       baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
@@ -13,6 +15,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!accessToken || error) {
+      if (isApiRequest) return response;
       return redirectToLogin(request, response);
     }
 
@@ -27,6 +30,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     } = await insforge.auth.getCurrentUser();
 
     if (!user || userError) {
+      if (isApiRequest) return response;
       return redirectToLogin(request, response);
     }
 
@@ -47,5 +51,5 @@ function redirectToLogin(request: NextRequest, response: NextResponse): NextResp
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/find-jobs/:path*"],
+  matcher: ["/dashboard/:path*", "/profile/:path*", "/find-jobs/:path*", "/api/((?!auth(?:/|$)).*)"],
 };
